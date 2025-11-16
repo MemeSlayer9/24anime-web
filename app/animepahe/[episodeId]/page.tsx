@@ -32,101 +32,92 @@ interface Episode {
 
 interface EpisodesResponse {
   providerEpisodes: Episode[];
+  title?: {
+    romaji?: string;
+    english?: string;
+    native?: string;
+  };
+  data?: {
+    malId?: number;
+    anilistId?: number;
+    image?: string;
+    color?: string;
+    bannerImage?: string;
+    title?: {
+      romaji?: string;
+      english?: string;
+      native?: string;
+    };
+  };
 }
 
-// Custom Icons
+interface VideoSource {
+  url: string;
+  isM3u8: boolean;
+  type: string;
+  quality: string;
+}
 const BackIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
     <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
   </svg>
 );
 
-const ListIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-    <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-  </svg>
-);
-
 const DownloadIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
     <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
   </svg>
 );
 
-const SettingsIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-    <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-  </svg>
-);
-
-const StarIcon = () => (
-  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-  </svg>
-);
-
-const ChevronDownIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-  </svg>
-);
-
-const InfoIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-  </svg>
-);
-
 const PlayIcon = () => (
-  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
     <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
   </svg>
 );
 
 const PauseIcon = () => (
-  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
     <path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z" />
   </svg>
 );
 
 const VolumeIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
     <path d="M10.5 3.75a.75.75 0 00-1.264-.546L5.203 7H2.667a.75.75 0 00-.75.75v4.5c0 .414.336.75.75.75h2.536l4.033 3.796a.75.75 0 001.264-.546V3.75zM16.45 5.05a.75.75 0 00-1.06 1.061 5.5 5.5 0 010 7.778.75.75 0 001.06 1.06 7 7 0 000-9.899z" />
     <path d="M14.329 7.172a.75.75 0 00-1.061 1.06 2.5 2.5 0 010 3.536.75.75 0 001.06 1.06 4 4 0 000-5.656z" />
   </svg>
 );
 
 const VolumeMuteIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
     <path d="M10.5 3.75a.75.75 0 00-1.264-.546L5.203 7H2.667a.75.75 0 00-.75.75v4.5c0 .414.336.75.75.75h2.536l4.033 3.796a.75.75 0 001.264-.546V3.75z" />
     <path stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M13 8l4 4m0-4l-4 4" />
   </svg>
 );
 
 const FullscreenIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
     <path d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l2.293 2.293a1 1 0 11-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 1a1 1 0 010-2h4a1 1 0 011 1v4a1 1 0 01-2 0V6.414l-2.293 2.293a1 1 0 11-1.414-1.414L13.586 5H12zm-9 7a1 1 0 012 0v1.586l2.293-2.293a1 1 0 111.414 1.414L6.414 15H8a1 1 0 010 2H4a1 1 0 01-1-1v-4zm13-1a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 010-2h1.586l-2.293-2.293a1 1 0 111.414-1.414L15 13.586V12a1 1 0 011-1z" />
   </svg>
 );
 
 const ExitFullscreenIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
     <path d="M3.707 6.293a1 1 0 010 1.414L6 10l-2.293 2.293a1 1 0 101.414 1.414L8 11.414V13a1 1 0 102 0V9a1 1 0 00-1-1H5a1 1 0 00-1 1 1 1 0 001.707.707zM13 3a1 1 0 011 1v1.586l2.293-2.293a1 1 0 111.414 1.414L15.414 7H17a1 1 0 010 2h-4a1 1 0 01-1-1V4a1 1 0 011-1z" />
   </svg>
 );
 
 const Forward10Icon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 00-1.3-3.2 4.2 4.2 0 00-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 00-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 00-.1 3.2A4.6 4.6 0 004 9.5c0 4.6 2.7 5.7 5.5 6 .4.6.5 1 .5 2V21" />
-    <text x="12" y="14" fontSize="8" fill="currentColor" textAnchor="middle" fontWeight="bold">10</text>
+  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
     <path strokeLinecap="round" strokeLinejoin="round" d="M16 8l3-3m0 0l-3-3m3 3H9a4 4 0 000 8h2" />
+    <text x="12" y="16" fontSize="10" fill="currentColor" textAnchor="middle" fontWeight="bold">10</text>
   </svg>
 );
 
 const Rewind10Icon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
     <path strokeLinecap="round" strokeLinejoin="round" d="M8 8l-3-3m0 0l3-3m-3 3h11a4 4 0 010 8h-2" />
-    <text x="12" y="14" fontSize="8" fill="currentColor" textAnchor="middle" fontWeight="bold">10</text>
+    <text x="12" y="16" fontSize="10" fill="currentColor" textAnchor="middle" fontWeight="bold">10</text>
   </svg>
 );
 
@@ -141,9 +132,11 @@ function AnimePahePlayer() {
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
   const [showEpisodesList, setShowEpisodesList] = useState(true);
-  const [showTechnicalInfo, setShowTechnicalInfo] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [episodeRange, setEpisodeRange] = useState("all");
+  const [animeTitle, setAnimeTitle] = useState<{romaji?: string; english?: string; native?: string} | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const hlsRef = useRef<any>(null);
+  const hlsRef = useRef<{ destroy: () => void } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Video control states
@@ -157,13 +150,11 @@ function AnimePahePlayer() {
   const [buffered, setBuffered] = useState(0);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Function to proxy the video URL
   const getProxiedUrl = (originalUrl: string): string => {
     const proxyBase = "https://hls.shrina.dev/proxy?url=";
     return proxyBase + encodeURIComponent(originalUrl);
   };
 
-  // Extract episode ID and anime ID from URL
   useEffect(() => {
     const pathParts = window.location.pathname.split('/');
     const epId = pathParts[pathParts.length - 1] || "";
@@ -175,7 +166,6 @@ function AnimePahePlayer() {
     setAnimeId(anId);
   }, []);
 
-  // Fetch episodes list
   useEffect(() => {
     async function fetchEpisodes() {
       if (!animeId) return;
@@ -191,7 +181,20 @@ function AnimePahePlayer() {
         }
 
         const data: EpisodesResponse = await response.json();
+        
         setEpisodes(data.providerEpisodes || []);
+        
+        let foundTitle = null;
+        
+        if (data.data && data.data.title) {
+          foundTitle = data.data.title;
+        } else if (data.title) {
+          foundTitle = data.title;
+        }
+        
+        if (foundTitle) {
+          setAnimeTitle(foundTitle);
+        }
       } catch (err) {
         console.error("Error fetching episodes:", err);
       } finally {
@@ -202,7 +205,6 @@ function AnimePahePlayer() {
     fetchEpisodes();
   }, [animeId]);
 
-  // Fetch video sources
   useEffect(() => {
     async function fetchSources() {
       if (!episodeId) return;
@@ -250,13 +252,11 @@ function AnimePahePlayer() {
 
   const proxiedVideoUrl = selectedSource ? getProxiedUrl(selectedSource.url) : null;
 
-  // Initialize HLS.js
   useEffect(() => {
     if (!proxiedVideoUrl || !videoRef.current) return;
 
     const video = videoRef.current;
     
-    // Add video event listeners
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
     const handleTimeUpdate = () => setCurrentTime(video.currentTime);
@@ -283,13 +283,11 @@ function AnimePahePlayer() {
     video.addEventListener('progress', handleProgress);
 
     const loadVideo = () => {
-      // @ts-ignore
       if (window.Hls && window.Hls.isSupported()) {
         if (hlsRef.current) {
           hlsRef.current.destroy();
         }
 
-        // @ts-ignore
         const hls = new window.Hls({
           debug: false,
           enableWorker: true,
@@ -300,19 +298,20 @@ function AnimePahePlayer() {
         hls.loadSource(proxiedVideoUrl);
         hls.attachMedia(video);
 
-        hls.on(window.Hls.Events.ERROR, (_event: any, data: any) => {
-          if (data.fatal) {
-            switch (data.type) {
-              case window.Hls.ErrorTypes.NETWORK_ERROR:
+        hls.on(window.Hls.Events.ERROR, (_event: string, data: unknown) => {
+          const errorData = data as { fatal?: boolean; type?: string; details?: string };
+          if (errorData.fatal) {
+            switch (errorData.type) {
+              case window.Hls?.ErrorTypes.NETWORK_ERROR:
                 console.log('Network error, trying to recover...');
                 hls.startLoad();
                 break;
-              case window.Hls.ErrorTypes.MEDIA_ERROR:
+              case window.Hls?.ErrorTypes.MEDIA_ERROR:
                 console.log('Media error, trying to recover...');
                 hls.recoverMediaError();
                 break;
               default:
-                console.error('Fatal error:', data);
+                console.error('Fatal error:', errorData);
                 break;
             }
           }
@@ -324,7 +323,6 @@ function AnimePahePlayer() {
       }
     };
 
-    // @ts-ignore
     if (window.Hls) {
       loadVideo();
     } else {
@@ -350,7 +348,6 @@ function AnimePahePlayer() {
     };
   }, [proxiedVideoUrl]);
 
-  // Handle fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -360,7 +357,6 @@ function AnimePahePlayer() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
   
-  // Auto-hide controls
   const resetControlsTimeout = () => {
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
@@ -383,7 +379,37 @@ function AnimePahePlayer() {
     };
   }, [isPlaying]);
   
-  // Video control handlers
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if ([' ', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+      }
+      
+      switch(e.key) {
+        case ' ':
+          togglePlay();
+          break;
+        case 'ArrowLeft':
+          skip(-10);
+          break;
+        case 'ArrowRight':
+          skip(10);
+          break;
+        case 'f':
+        case 'F':
+          toggleFullscreen();
+          break;
+        case 'm':
+        case 'M':
+          toggleMute();
+          break;
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isPlaying, isFullscreen, isMuted]);
+  
   const togglePlay = () => {
     if (videoRef.current) {
       if (isPlaying) {
@@ -418,13 +444,38 @@ function AnimePahePlayer() {
     }
   };
   
-  const toggleFullscreen = () => {
+  const toggleFullscreen = async () => {
     if (!containerRef.current) return;
     
     if (!isFullscreen) {
-      containerRef.current.requestFullscreen();
+      try {
+        await containerRef.current.requestFullscreen();
+        
+        // Lock to landscape orientation on mobile devices
+        if ('orientation' in screen && 'lock' in (screen.orientation as ScreenOrientation & { lock: (orientation: string) => Promise<void> })) {
+          try {
+            await (screen.orientation as ScreenOrientation & { lock: (orientation: string) => Promise<void> }).lock('landscape').catch(() => {
+              // Fallback: try landscape-primary if landscape fails
+              (screen.orientation as ScreenOrientation & { lock: (orientation: string) => Promise<void> }).lock('landscape-primary').catch(() => {});
+            });
+          } catch (err) {
+            console.log('Orientation lock not supported');
+          }
+        }
+      } catch (err) {
+        console.error('Fullscreen request failed:', err);
+      }
     } else {
-      document.exitFullscreen();
+      try {
+        await document.exitFullscreen();
+        
+        // Unlock orientation when exiting fullscreen
+        if ('orientation' in screen && 'unlock' in (screen.orientation as ScreenOrientation & { unlock: () => void })) {
+          (screen.orientation as ScreenOrientation & { unlock: () => void }).unlock();
+        }
+      } catch (err) {
+        console.error('Exit fullscreen failed:', err);
+      }
     }
   };
   
@@ -468,25 +519,38 @@ function AnimePahePlayer() {
     const newUrl = `${window.location.pathname.split('/').slice(0, -1).join('/')}/${encodeURIComponent(newEpisodeId)}?${params.toString()}`;
     window.history.pushState({}, '', newUrl);
     setEpisodeId(newEpisodeId);
-    setShowEpisodesList(false);
   };
 
   const currentEpisode = episodes.find(ep => ep.episodeId === episodeId);
 
+  const filteredEpisodes = episodes.filter(episode => {
+    const matchesSearch = searchQuery === "" || 
+      episode.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      episode.episodeNumber.toString().includes(searchQuery);
+    
+    let matchesRange = true;
+    if (episodeRange !== "all") {
+      const [start, end] = episodeRange.split("-").map(Number);
+      matchesRange = episode.episodeNumber >= start && episode.episodeNumber <= end;
+    }
+    
+    return matchesSearch && matchesRange;
+  });
+
   if (!episodeId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white flex items-center justify-center p-4">
-        <div className="text-center space-y-6 max-w-md">
-          <div className="text-6xl">📺</div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white flex items-center justify-center p-3 sm:p-4">
+        <div className="text-center space-y-4 sm:space-y-6 max-w-md px-4">
+          <div className="text-4xl sm:text-6xl">📺</div>
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent">
             No Episode Selected
           </h1>
-          <p className="text-gray-400 text-lg">
+          <p className="text-gray-400 text-base sm:text-lg">
             Please select an episode to start watching
           </p>
           <button
             onClick={() => window.history.back()}
-            className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white px-8 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 shadow-lg flex items-center gap-2 mx-auto"
+            className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-xl font-semibold transition-all transform hover:scale-105 shadow-lg flex items-center gap-2 mx-auto text-sm sm:text-base"
           >
             <BackIcon />
             Go Back
@@ -498,13 +562,13 @@ function AnimePahePlayer() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white flex items-center justify-center p-4">
-        <div className="text-center space-y-6">
-          <div className="w-20 h-20 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white flex items-center justify-center p-3 sm:p-4">
+        <div className="text-center space-y-4 sm:space-y-6">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent">
             Loading your anime...
           </h2>
-          <p className="text-gray-400">Fetching video sources</p>
+          <p className="text-gray-400 text-sm sm:text-base">Fetching video sources</p>
         </div>
       </div>
     );
@@ -512,16 +576,16 @@ function AnimePahePlayer() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white flex items-center justify-center p-4">
-        <div className="text-center space-y-6 max-w-md">
-          <div className="text-6xl">⚠️</div>
-          <h1 className="text-3xl font-bold text-red-500">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white flex items-center justify-center p-3 sm:p-4">
+        <div className="text-center space-y-4 sm:space-y-6 max-w-md px-4">
+          <div className="text-4xl sm:text-6xl">⚠️</div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-red-500">
             Oops! Something went wrong
           </h1>
-          <p className="text-gray-400 text-lg">{error}</p>
+          <p className="text-gray-400 text-base sm:text-lg">{error}</p>
           <button
             onClick={() => window.history.back()}
-            className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white px-8 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 shadow-lg flex items-center gap-2 mx-auto"
+            className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-xl font-semibold transition-all transform hover:scale-105 shadow-lg flex items-center gap-2 mx-auto text-sm sm:text-base"
           >
             <BackIcon />
             Go Back
@@ -533,46 +597,10 @@ function AnimePahePlayer() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between bg-gray-800/50 backdrop-blur-lg rounded-2xl p-4 shadow-xl border border-gray-700/50">
-          <button
-            onClick={() => window.history.back()}
-            className="flex items-center gap-2 text-white hover:text-red-400 transition-all group"
-          >
-            <BackIcon />
-            <span className="font-semibold">Back</span>
-          </button>
-
-          <div className="flex items-center gap-3">
-            {episodes.length > 0 && (
-              <button
-                onClick={() => setShowEpisodesList(!showEpisodesList)}
-                className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-xl font-semibold transition-all transform hover:scale-105 shadow-lg"
-              >
-                <ListIcon />
-                Episodes
-              </button>
-            )}
-
-            {sourcesData?.data.download && (
-              <a
-                href={sourcesData.data.download}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-4 py-2 rounded-xl font-semibold transition-all transform hover:scale-105 shadow-lg"
-              >
-                <DownloadIcon />
-                Download
-              </a>
-            )}
-          </div>
-        </div>
-
-        {/* Video Player */}
+      <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-3 sm:space-y-6">
         <div 
           ref={containerRef}
-          className="relative w-full bg-black rounded-2xl overflow-hidden shadow-2xl group"
+          className="relative w-full bg-black rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl group"
           onMouseMove={resetControlsTimeout}
           onMouseLeave={() => isPlaying && setShowControls(false)}
         >
@@ -580,102 +608,76 @@ function AnimePahePlayer() {
             <>
               <video
                 ref={videoRef}
-                className="w-full aspect-video bg-black [&::-webkit-media-controls]:hidden [&::-webkit-media-controls-enclosure]:hidden"
+                className="w-full aspect-video bg-black pointer-events-auto"
+                style={{ objectFit: 'contain' }}
                 playsInline
                 onClick={togglePlay}
+                disablePictureInPicture
+                disableRemotePlayback
+                onContextMenu={(e) => e.preventDefault()}
               />
               
-              {/* Custom Controls Overlay */}
               <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity duration-300 pointer-events-none ${showControls ? 'opacity-100' : 'opacity-0'}`}>
-                {/* Center Play/Pause Button */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
                   <button
                     onClick={togglePlay}
-                    className="w-20 h-20 bg-red-600/90 hover:bg-red-500 rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-2xl"
+                    className="w-14 h-14 sm:w-20 sm:h-20 bg-red-600/90 hover:bg-red-500 rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-2xl"
                   >
                     {isPlaying ? <PauseIcon /> : <PlayIcon />}
                   </button>
                 </div>
                 
-                {/* Bottom Controls */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 space-y-2 pointer-events-auto">
-                  {/* Progress Bar */}
-                  <div className="relative group/progress">
-                    {/* Buffer Bar */}
-                    <div className="absolute top-1/2 -translate-y-1/2 h-1 w-full bg-gray-600 rounded-full overflow-hidden">
+                <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 space-y-1 sm:space-y-2 pointer-events-auto">
+                  <div className="relative group/progress h-2 flex items-center">
+                    <div className="absolute inset-0 h-1 bg-gray-700 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-gray-500"
+                        className="h-full bg-gray-500 transition-all"
                         style={{ width: `${buffered}%` }}
                       />
                     </div>
                     
-                    {/* Progress Bar Input */}
+                    <div className="absolute inset-0 h-1 rounded-full overflow-hidden pointer-events-none">
+                      <div 
+                        className="h-full bg-red-500 transition-all"
+                        style={{ width: `${(currentTime / duration) * 100}%` }}
+                      />
+                    </div>
+                    
                     <input
                       type="range"
                       min="0"
                       max={duration || 0}
                       value={currentTime}
                       onChange={handleSeek}
-                      className="w-full h-1 appearance-none bg-transparent cursor-pointer relative z-10 
-                        [&::-webkit-slider-thumb]:appearance-none 
-                        [&::-webkit-slider-thumb]:w-4 
-                        [&::-webkit-slider-thumb]:h-4 
-                        [&::-webkit-slider-thumb]:rounded-full 
-                        [&::-webkit-slider-thumb]:bg-red-500 
-                        [&::-webkit-slider-thumb]:cursor-pointer
-                        [&::-webkit-slider-thumb]:shadow-lg
-                        [&::-webkit-slider-thumb]:opacity-0
-                        group-hover/progress:[&::-webkit-slider-thumb]:opacity-100
-                        [&::-webkit-slider-thumb]:transition-opacity
-                        [&::-moz-range-thumb]:w-4 
-                        [&::-moz-range-thumb]:h-4 
-                        [&::-moz-range-thumb]:rounded-full 
-                        [&::-moz-range-thumb]:bg-red-500 
-                        [&::-moz-range-thumb]:border-0
-                        [&::-moz-range-thumb]:cursor-pointer
-                        [&::-moz-range-thumb]:shadow-lg
-                        [&::-moz-range-thumb]:opacity-0
-                        group-hover/progress:[&::-moz-range-thumb]:opacity-100
-                        [&::-moz-range-thumb]:transition-opacity"
-                      style={{
-                        background: `linear-gradient(to right, #ef4444 0%, #ef4444 ${(currentTime / duration) * 100}%, transparent ${(currentTime / duration) * 100}%, transparent 100%)`
+                      className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer z-10"
+                    />
+                    
+                    <div 
+                      className="absolute w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded-full shadow-lg pointer-events-none transition-opacity opacity-0 group-hover/progress:opacity-100 z-20"
+                      style={{ 
+                        left: `calc(${(currentTime / duration) * 100}% - 6px)`,
+                        top: '50%',
+                        transform: 'translateY(-50%)'
                       }}
                     />
                   </div>
                   
-                  {/* Control Buttons */}
-                  <div className="flex items-center justify-between text-white">
-                    {/* Left Controls */}
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={togglePlay}
-                        className="hover:text-red-400 transition-colors p-2"
-                      >
+                  <div className="flex items-center justify-between text-white flex-wrap gap-2">
+                    <div className="flex items-center gap-1 sm:gap-3 flex-wrap">
+                      <button onClick={togglePlay} className="hover:text-red-400 transition-colors p-1 sm:p-2">
                         {isPlaying ? <PauseIcon /> : <PlayIcon />}
                       </button>
                       
-                      <button
-                        onClick={() => skip(-10)}
-                        className="hover:text-red-400 transition-colors p-2"
-                        title="Rewind 10s"
-                      >
+                      <button onClick={() => skip(-10)} className="hover:text-red-400 transition-colors p-1 sm:p-2" title="Rewind 10s">
                         <Rewind10Icon />
                       </button>
                       
-                      <button
-                        onClick={() => skip(10)}
-                        className="hover:text-red-400 transition-colors p-2"
-                        title="Forward 10s"
-                      >
+                      <button onClick={() => skip(10)} className="hover:text-red-400 transition-colors p-1 sm:p-2" title="Forward 10s">
                         <Forward10Icon />
                       </button>
                       
-                      {/* Volume Control */}
-                      <div className="flex items-center gap-2 group/volume">
-                        <button
-                          onClick={toggleMute}
-                          className="hover:text-red-400 transition-colors p-2"
-                        >
+                      <div className="hidden sm:flex items-center gap-2 group/volume">
+                        <button onClick={toggleMute} className="hover:text-red-400 transition-colors p-2">
                           {isMuted || volume === 0 ? <VolumeMuteIcon /> : <VolumeIcon />}
                         </button>
                         
@@ -686,54 +688,49 @@ function AnimePahePlayer() {
                           step="0.01"
                           value={isMuted ? 0 : volume}
                           onChange={handleVolumeChange}
-                          className="w-0 group-hover/volume:w-20 transition-all duration-300 h-1 appearance-none bg-transparent cursor-pointer
-                            [&::-webkit-slider-track]:h-1
-                            [&::-webkit-slider-track]:rounded-full
-                            [&::-webkit-slider-track]:bg-gray-600
-                            [&::-webkit-slider-thumb]:appearance-none 
-                            [&::-webkit-slider-thumb]:w-3 
-                            [&::-webkit-slider-thumb]:h-3 
-                            [&::-webkit-slider-thumb]:rounded-full 
-                            [&::-webkit-slider-thumb]:bg-white 
-                            [&::-webkit-slider-thumb]:cursor-pointer
-                            [&::-moz-range-track]:h-1
-                            [&::-moz-range-track]:rounded-full
-                            [&::-moz-range-track]:bg-gray-600
-                            [&::-moz-range-thumb]:w-3 
-                            [&::-moz-range-thumb]:h-3 
-                            [&::-moz-range-thumb]:rounded-full 
-                            [&::-moz-range-thumb]:bg-white 
-                            [&::-moz-range-thumb]:border-0
-                            [&::-moz-range-thumb]:cursor-pointer"
+                          className="w-0 group-hover/volume:w-20 transition-all duration-300 h-1 appearance-none bg-transparent cursor-pointer"
                           style={{
                             background: `linear-gradient(to right, white 0%, white ${(isMuted ? 0 : volume) * 100}%, #4b5563 ${(isMuted ? 0 : volume) * 100}%, #4b5563 100%)`
                           }}
                         />
                       </div>
                       
-                      {/* Time Display */}
-                      <span className="text-sm font-medium">
+                      <button onClick={toggleMute} className="sm:hidden hover:text-red-400 transition-colors p-1">
+                        {isMuted || volume === 0 ? <VolumeMuteIcon /> : <VolumeIcon />}
+                      </button>
+                      
+                      <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
                         {formatTime(currentTime)} / {formatTime(duration)}
                       </span>
                     </div>
                     
-                    {/* Right Controls */}
-                    <div className="flex items-center gap-2">
-                      {/* Quality Selector */}
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      {sourcesData?.data.download && (
+                        <a
+                          href={sourcesData.data.download}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 sm:p-2 hover:text-green-400 transition-colors"
+                          title="Download Episode"
+                        >
+                          <DownloadIcon />
+                        </a>
+                      )}
+                      
                       <div className="relative">
                         <button
                           onClick={() => setShowQualityMenu(!showQualityMenu)}
-                          className="px-3 py-2 bg-gray-800/80 hover:bg-gray-700 rounded-lg text-sm font-semibold transition-colors"
+                          className="px-2 py-1 sm:px-3 sm:py-2 bg-gray-800/80 hover:bg-gray-700 rounded-lg text-xs sm:text-sm font-semibold transition-colors"
                         >
                           {selectedQuality}
                         </button>
                         {showQualityMenu && sourcesData && (
-                          <div className="absolute bottom-full right-0 mb-2 bg-gray-900/95 backdrop-blur-lg rounded-lg overflow-hidden shadow-2xl border border-gray-700 min-w-[100px]">
+                          <div className="absolute bottom-full right-0 mb-2 bg-gray-900/95 backdrop-blur-lg rounded-lg overflow-hidden shadow-2xl border border-gray-700 min-w-[80px] sm:min-w-[100px] z-50">
                             {sourcesData.data.sources.map((source) => (
                               <button
                                 key={source.quality}
                                 onClick={() => handleQualityChange(source.quality)}
-                                className={`w-full px-4 py-2 text-left text-sm hover:bg-red-600 transition-colors ${
+                                className={`w-full px-3 py-2 text-left text-xs sm:text-sm hover:bg-red-600 transition-colors ${
                                   selectedQuality === source.quality
                                     ? 'bg-red-600 text-white font-bold'
                                     : 'text-gray-300'
@@ -746,10 +743,7 @@ function AnimePahePlayer() {
                         )}
                       </div>
                       
-                      <button
-                        onClick={toggleFullscreen}
-                        className="hover:text-red-400 transition-colors p-2"
-                      >
+                      <button onClick={toggleFullscreen} className="hover:text-red-400 transition-colors p-1 sm:p-2">
                         {isFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
                       </button>
                     </div>
@@ -760,165 +754,201 @@ function AnimePahePlayer() {
           ) : (
             <div className="aspect-video flex items-center justify-center bg-gray-800">
               <div className="text-center space-y-4">
-                <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <p className="text-gray-400">No video source available</p>
+                <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="text-gray-400 text-sm sm:text-base">No video source available</p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Current Episode Info */}
         {currentEpisode && (
-          <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-gray-700/50">
-            <div className="flex gap-6">
-              {currentEpisode.thumbnail && (
-                <img
-                  src={currentEpisode.thumbnail}
-                  alt={currentEpisode.title}
-                  className="w-40 h-24 object-cover rounded-xl shadow-lg"
-                />
-              )}
-              <div className="flex-1 space-y-2">
-                <div className="text-sm text-red-400 font-semibold tracking-wider uppercase">
-                  NOW WATCHING
-                </div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent">
-                  Episode {currentEpisode.episodeNumber}
-                </h2>
-                <p className="text-lg text-white font-medium">{currentEpisode.title}</p>
-                {currentEpisode.overview && (
-                  <p className="text-gray-400 text-sm line-clamp-2">{currentEpisode.overview}</p>
-                )}
-                <div className="flex items-center gap-4 text-sm text-gray-400">
-                  <span>Aired: {currentEpisode.airDate}</span>
-                  {currentEpisode.rating && (
-                    <div className="flex items-center gap-1 text-yellow-400">
-                      <StarIcon />
-                      <span>{currentEpisode.rating}</span>
+          <div className="bg-gradient-to-br from-gray-900 to-black backdrop-blur-lg rounded-xl sm:rounded-2xl p-3 sm:p-6 shadow-xl border border-red-900/50">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
+              {(() => {
+                const currentIndex = episodes.findIndex(ep => ep.episodeId === episodeId);
+                const previousEpisode = currentIndex > 0 ? episodes[currentIndex - 1] : null;
+                
+                return previousEpisode ? (
+                  <button
+                    onClick={() => handleEpisodeChange(previousEpisode.episodeId)}
+                    className="flex flex-row sm:flex-col items-center justify-center bg-black hover:bg-red-900/30 p-3 sm:p-4 rounded-xl transition-all transform hover:scale-105 border border-red-900/50 min-w-0 sm:min-w-[120px] gap-2 sm:gap-0"
+                    title={`Episode ${previousEpisode.episodeNumber}: ${previousEpisode.title}`}
+                  >
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 sm:mb-2 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs text-red-400 mb-1">Previous</span>
+                      <span className="text-sm font-bold text-white">EP {previousEpisode.episodeNumber}</span>
                     </div>
+                  </button>
+                ) : (
+                  <div className="hidden sm:flex flex-col items-center justify-center bg-black/50 p-4 rounded-xl min-w-[120px] opacity-30 border border-gray-800">
+                    <svg className="w-8 h-8 mb-2 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-xs text-gray-600">No Previous</span>
+                  </div>
+                );
+              })()}
+              
+              <div className="flex-1 flex flex-col sm:flex-row gap-3 sm:gap-6 bg-gradient-to-br from-red-950/50 to-black/50 p-3 sm:p-4 rounded-xl border border-red-900/50">
+                {currentEpisode.thumbnail && (
+                  <img
+                    src={currentEpisode.thumbnail}
+                    alt={currentEpisode.title}
+                    className="w-full sm:w-40 h-32 sm:h-24 object-cover rounded-xl shadow-lg border border-red-900/30"
+                  />
+                )}
+                <div className="flex-1 space-y-1 sm:space-y-2">
+                  <div className="mb-1 sm:mb-2">
+                    {animeTitle ? (
+                      <button
+                        onClick={() => window.location.href = `/details/${animeId}`}
+                        className="text-left hover:text-red-400 transition-colors group w-full"
+                      >
+                        <h1 className="text-base sm:text-xl font-bold text-white group-hover:underline line-clamp-1">
+                          {animeTitle.english || animeTitle.romaji || animeTitle.native || "No Title"}
+                        </h1>
+                      </button>
+                    ) : (
+                      <div className="text-base sm:text-xl font-bold text-gray-500">
+                        Loading title...
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="text-xs sm:text-sm text-red-400 font-semibold tracking-wider uppercase">
+                    NOW WATCHING
+                  </div>
+                  <h2 className="text-lg sm:text-2xl font-bold text-red-500">
+                    Episode {currentEpisode.episodeNumber}
+                  </h2>
+                  <p className="text-sm sm:text-lg text-white font-medium line-clamp-1">{currentEpisode.title}</p>
+                  {currentEpisode.overview && (
+                    <p className="text-gray-400 text-xs sm:text-sm line-clamp-2">{currentEpisode.overview}</p>
                   )}
+                  <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-400 pt-1">
+                    <span>Aired: {currentEpisode.airDate}</span>
+                  </div>
                 </div>
               </div>
+              
+              {(() => {
+                const currentIndex = episodes.findIndex(ep => ep.episodeId === episodeId);
+                const nextEpisode = currentIndex < episodes.length - 1 ? episodes[currentIndex + 1] : null;
+                
+                return nextEpisode ? (
+                  <button
+                    onClick={() => handleEpisodeChange(nextEpisode.episodeId)}
+                    className="flex flex-row sm:flex-col items-center justify-center bg-gradient-to-br from-red-600 to-red-900 hover:from-red-500 hover:to-red-800 p-3 sm:p-4 rounded-xl transition-all transform hover:scale-105 shadow-lg shadow-red-900/50 min-w-0 sm:min-w-[120px] gap-2 sm:gap-0"
+                    title={`Episode ${nextEpisode.episodeNumber}: ${nextEpisode.title}`}
+                  >
+                    <div className="flex flex-col items-center order-2 sm:order-1">
+                      <span className="text-xs mb-1 text-white">Next</span>
+                      <span className="text-sm font-bold text-white">EP {nextEpisode.episodeNumber}</span>
+                    </div>
+                    <svg className="w-6 h-6 sm:w-8 sm:h-8 sm:mb-2 text-white order-1 sm:order-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                ) : (
+                  <div className="hidden sm:flex flex-col items-center justify-center bg-black/50 p-4 rounded-xl min-w-[120px] opacity-30 border border-gray-800">
+                    <svg className="w-8 h-8 mb-2 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-xs text-gray-600">No Next</span>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
 
-        {/* Episodes Grid */}
         {showEpisodesList && episodes.length > 0 && (
-          <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-gray-700/50 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent">
+          <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-lg rounded-xl sm:rounded-2xl p-3 sm:p-6 shadow-xl border border-gray-700/50 space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+              <h3 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent">
                 All Episodes
               </h3>
-              <span className="text-gray-400 text-sm">{episodes.length} episodes</span>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                <input
+                  type="text"
+                  placeholder="Search episode..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="px-3 sm:px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent w-full sm:w-48 text-sm"
+                />
+                
+                <select
+                  value={episodeRange}
+                  onChange={(e) => setEpisodeRange(e.target.value)}
+                  className="px-3 sm:px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent cursor-pointer text-sm"
+                >
+                  <option value="all">All Episodes</option>
+                  {(() => {
+                    const ranges = [];
+                    const totalEpisodes = episodes.length;
+                    for (let i = 1; i <= totalEpisodes; i += 25) {
+                      const end = Math.min(i + 24, totalEpisodes);
+                      ranges.push(
+                        <option key={`${i}-${end}`} value={`${i}-${end}`}>
+                          Episodes {i}-{end}
+                        </option>
+                      );
+                    }
+                    return ranges;
+                  })()}
+                </select>
+                
+                <span className="text-gray-400 text-xs sm:text-sm text-center sm:text-left">
+                  {filteredEpisodes.length} / {episodes.length} episodes
+                </span>
+              </div>
             </div>
 
             {loadingEpisodes ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="flex items-center justify-center py-8 sm:py-12">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : filteredEpisodes.length === 0 ? (
+              <div className="text-center py-8 sm:py-12">
+                <p className="text-gray-400 text-base sm:text-lg">No episodes found matching your search.</p>
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setEpisodeRange("all");
+                  }}
+                  className="mt-4 px-4 sm:px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm sm:text-base"
+                >
+                  Clear Filters
+                </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {episodes.map((episode) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-4">
+                {filteredEpisodes.map((episode) => (
                   <button
                     key={episode.episodeId}
                     onClick={() => handleEpisodeChange(episode.episodeId)}
-                    className={`group text-left p-4 rounded-xl transition-all transform hover:scale-105 hover:shadow-xl ${
+                    className={`group text-left p-2 sm:p-4 rounded-lg sm:rounded-xl transition-all transform hover:scale-105 hover:shadow-xl ${
                       episode.episodeId === episodeId
                         ? 'bg-gradient-to-br from-red-600 to-pink-600 text-white shadow-lg shadow-red-500/50'
                         : 'bg-gray-700/50 hover:bg-gray-700 text-gray-300 border border-gray-600/50'
                     }`}
                   >
-                    <div className="space-y-2">
+                    <div className="space-y-1 sm:space-y-2">
                       {episode.thumbnail && (
                         <img
                           src={episode.thumbnail}
                           alt={episode.title}
-                          className="w-full h-24 object-cover rounded-lg"
+                          className="w-full h-16 sm:h-24 object-cover rounded-md sm:rounded-lg"
                         />
                       )}
-                      <div className="font-bold text-sm">Episode {episode.episodeNumber}</div>
-                      <div className="text-xs opacity-80 line-clamp-2">{episode.title}</div>
-                      {episode.rating && (
-                        <div className="flex items-center gap-1 text-yellow-400 text-xs">
-                          <StarIcon />
-                          <span>{episode.rating}</span>
-                        </div>
-                      )}
+                      <div className="font-bold text-xs sm:text-sm">Episode {episode.episodeNumber}</div>
+                      <div className="text-[10px] sm:text-xs opacity-80 line-clamp-2">{episode.title}</div>
                     </div>
                   </button>
                 ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Technical Info */}
-        {sourcesData && (
-          <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-700/50 overflow-hidden">
-            <button
-              onClick={() => setShowTechnicalInfo(!showTechnicalInfo)}
-              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-700/30 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <InfoIcon />
-                <span className="font-semibold">Technical Information</span>
-              </div>
-              <ChevronDownIcon />
-            </button>
-
-            {showTechnicalInfo && (
-              <div className="px-6 pb-6 space-y-4 text-sm">
-                <div className="space-y-2">
-                  <div className="text-gray-400 font-semibold">Episode ID</div>
-                  <div className="bg-gray-900/50 p-3 rounded-lg font-mono text-xs break-all">
-                    {episodeId}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="text-gray-400 font-semibold">Using Proxy</div>
-                  <div className="bg-gray-900/50 p-3 rounded-lg font-mono text-xs">
-                    hls.shrina.dev
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="text-gray-400 font-semibold">Available Qualities</div>
-                  <div className="flex flex-wrap gap-2">
-                    {sourcesData.data.sources.map((source) => (
-                      <span
-                        key={source.quality}
-                        className="bg-gray-900/50 px-3 py-1 rounded-lg text-xs"
-                      >
-                        {source.quality} ({source.type.toUpperCase()})
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {selectedSource && (
-                  <div className="space-y-2">
-                    <div className="text-gray-400 font-semibold">Current Source Details</div>
-                    <div className="bg-gray-900/50 p-3 rounded-lg space-y-1 text-xs">
-                      <div><span className="text-gray-500">Quality:</span> {selectedSource.quality}</div>
-                      <div><span className="text-gray-500">Type:</span> {selectedSource.type.toUpperCase()}</div>
-                      <div><span className="text-gray-500">Format:</span> {selectedSource.isM3u8 ? 'HLS (M3U8)' : 'Direct'}</div>
-                      <div className="pt-2">
-                        <div className="text-gray-500 mb-1">Original URL:</div>
-                        <div className="font-mono break-all bg-gray-800/50 p-2 rounded">
-                          {selectedSource.url}
-                        </div>
-                      </div>
-                      <div className="pt-2">
-                        <div className="text-gray-500 mb-1">Proxied Stream URL:</div>
-                        <div className="font-mono break-all bg-gray-800/50 p-2 rounded">
-                          {proxiedVideoUrl}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>

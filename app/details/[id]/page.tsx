@@ -176,14 +176,23 @@ function AnimeDetailsPage() {
     );
   }
 
-  if (loading) {
+if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading anime details...</div>
+        <div className="flex flex-col items-center gap-4">
+          <img 
+            src="/loading.gif" 
+            alt="Loading..." 
+            className="w-64 h-64 object-contain"
+            style={{ 
+              mixBlendMode: 'screen',
+              filter: 'contrast(1.2) brightness(1.1)'
+            }}
+          />
+         </div>
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -213,31 +222,26 @@ function AnimeDetailsPage() {
   const displayedEpisodes = showAllEpisodes ? episodes : episodes.slice(0, 12);
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen #0a0a0a"  style={{ margin: '2rem 3rem' }}>
       {/* Hero Section with Cover */}
       <div className="relative w-full h-[500px]">
-        <img
-          src={animeData.cover || animeData.image}
-          alt={title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-transparent to-transparent" />
-        
-        {/* Back Button */}
-        <button
-          onClick={() => window.history.back()}
-          className="absolute top-6 left-6 bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white px-4 py-2 rounded-lg font-semibold transition-all z-10"
-        >
-          ← Back
-        </button>
+             <img
+  src={animeData.cover || animeData.image}
+  alt={title}
+  className="w-full h-full object-cover"
+/>
+<div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/50 to-transparent" />
+<div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a]/120 via-transparent to-transparent" />
+<div className="absolute inset-0 bg-gradient-to-l from-[#0a0a0a]/120 via-transparent to-transparent" />
+<div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a]/100 via-transparent to-transparent" />
+         
       </div>
 
       {/* Content Section */}
-      <div className="container mx-auto px-6 -mt-64 relative z-10">
+      <div className="container mx-auto px-6 -mt-64 relative z-10" >
         <div className="flex flex-col md:flex-row gap-8">
           {/* Poster */}
-          <div className="flex-shrink-0">
+         <div className="flex-shrink-0 mx-auto md:mx-0">
             <img
               src={animeData.image}
               alt={title}
@@ -252,17 +256,7 @@ function AnimeDetailsPage() {
               {title}
             </h1>
 
-            {/* Anime ID Display */}
-            <div className="bg-black/50 backdrop-blur-sm border border-red-900/50 rounded-lg p-4">
-              <p className="text-red-400 text-sm mb-1">Anime ID</p>
-              <p className="text-white font-mono text-lg">{animeId}</p>
-              {animeData.malId && (
-                <>
-                  <p className="text-red-400 text-sm mt-3 mb-1">MyAnimeList ID</p>
-                  <p className="text-white font-mono text-lg">{animeData.malId}</p>
-                </>
-              )}
-            </div>
+            
 
             {/* Meta Info */}
             <div className="flex flex-wrap items-center gap-3">
@@ -336,17 +330,7 @@ function AnimeDetailsPage() {
               </div>
             )}
 
-            {/* Watch Button */}
-            <div className="pt-4">
-              <button
-                className="group flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-red-500/50"
-              >
-                <span className="group-hover:translate-x-1 transition-transform inline-block">
-                  <PlayIcon />
-                </span>
-                Start Watching
-              </button>
-            </div>
+              
 
             {/* Episodes Info */}
             {animeData.totalEpisodes && (

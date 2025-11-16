@@ -151,7 +151,17 @@ function Carousel() {
   if (loading) {
     return (
       <div className="relative w-full h-[600px] bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading trending anime...</div>
+      <div className="flex flex-col items-center gap-4">
+          <img 
+            src="/loading.gif" 
+            alt="Loading..." 
+            className="w-64 h-64 object-contain"
+            style={{ 
+              mixBlendMode: 'screen',
+              filter: 'contrast(1.2) brightness(1.1)'
+            }}
+          />
+         </div>
       </div>
     );
   }
