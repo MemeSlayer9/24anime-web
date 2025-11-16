@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 // Custom hook for window dimensions
 function useWindowDimensions() {
@@ -90,6 +90,12 @@ function Carousel() {
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  
+  // Touch/Swipe states
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function fetchTrending() {
@@ -142,6 +148,66 @@ function Carousel() {
     setIsAutoPlaying(false);
   };
 
+  // Touch handlers for swipe gestures
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+    setTouchEnd(e.targetTouches[0].clientX);
+    setIsSwiping(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!isSwiping) return;
+    
+    const swipeThreshold = 50; // Minimum distance for a swipe
+    const distance = touchStart - touchEnd;
+    
+    if (Math.abs(distance) > swipeThreshold) {
+      if (distance > 0) {
+        // Swiped left - go to next
+        goToNext();
+      } else {
+        // Swiped right - go to previous
+        goToPrev();
+      }
+    }
+    
+    setIsSwiping(false);
+  };
+
+  // Mouse handlers for desktop drag (optional enhancement)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (width > 768) return; // Only on mobile
+    setTouchStart(e.clientX);
+    setTouchEnd(e.clientX);
+    setIsSwiping(true);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isSwiping) return;
+    setTouchEnd(e.clientX);
+  };
+
+  const handleMouseUp = () => {
+    if (!isSwiping) return;
+    
+    const swipeThreshold = 50;
+    const distance = touchStart - touchEnd;
+    
+    if (Math.abs(distance) > swipeThreshold) {
+      if (distance > 0) {
+        goToNext();
+      } else {
+        goToPrev();
+      }
+    }
+    
+    setIsSwiping(false);
+  };
+
   if (!mounted) {
     return (
       <div className="relative w-full h-[600px] bg-gray-900 animate-pulse" />
@@ -151,7 +217,7 @@ function Carousel() {
   if (loading) {
     return (
       <div className="relative w-full h-[600px] bg-gray-900 flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-4">
           <img 
             src="/loading.gif" 
             alt="Loading..." 
@@ -161,7 +227,7 @@ function Carousel() {
               filter: 'contrast(1.2) brightness(1.1)'
             }}
           />
-         </div>
+        </div>
       </div>
     );
   }
@@ -179,7 +245,18 @@ function Carousel() {
   const title = currentAnime.title.english || currentAnime.title.romaji || currentAnime.title.userPreferred || "Unknown Title";
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ height: isMobile ? '500px' : '700px' }}>
+    <div 
+      ref={carouselRef}
+      className="relative w-full overflow-hidden select-none" 
+      style={{ height: isMobile ? '500px' : '700px' }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={() => setIsSwiping(false)}
+    >
       {/* Background Images with transition */}
       {animeData.map((item, index) => (
         <div
@@ -194,6 +271,7 @@ function Carousel() {
             src={item.cover || item.image}
             alt={item.title.english || item.title.romaji || ""}
             className="w-full h-full object-cover"
+            draggable="false"
             onError={(e) => {
               if (e.currentTarget.src === item.cover) {
                 e.currentTarget.src = item.image;
@@ -209,7 +287,7 @@ function Carousel() {
       ))}
 
       {/* Content Container */}
-      <div className="relative h-full flex items-end pb-20 md:pb-32">
+      <div className="relative h-full flex items-end pb-20 md:pb-32 pointer-events-none">
         <div className="container mx-auto px-6 md:px-12 max-w-7xl">
           <div className="max-w-3xl space-y-4 md:space-y-6">
             {/* Title with animation */}
@@ -272,7 +350,7 @@ function Carousel() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap gap-4 pt-4">
+            <div className="flex flex-wrap gap-4 pt-4 pointer-events-auto">
               <button
                 onClick={() => window.location.href = `/details/${currentAnime.id}`}
                 className="group flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-lg font-semibold text-base md:text-lg transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-red-500/50"
@@ -317,27 +395,26 @@ function Carousel() {
         </>
       )}
 
-      {/* Pagination Dots */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-        {animeData.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => {
-              setCurrentIndex(index);
-              setIsAutoPlaying(false);
-            }}
-            className={`transition-all duration-300 rounded-full ${
-              index === currentIndex 
-                ? 'bg-red-600 w-8 h-2' 
-                : 'bg-white/40 hover:bg-white/60 w-2 h-2'
-            }`}
-            aria-label={`Go to slide ${index + 1}`}
-          />
-        ))}
-      </div>
-
-      {/* Thumbnail Preview - Desktop only */}
-     
+      {/* Pagination Dots - Desktop only */}
+      {!isMobile && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+          {animeData.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => {
+                setCurrentIndex(index);
+                setIsAutoPlaying(false);
+              }}
+              className={`transition-all duration-300 rounded-full ${
+                index === currentIndex 
+                  ? 'bg-red-600 w-8 h-2' 
+                  : 'bg-white/40 hover:bg-white/60 w-2 h-2'
+              }`}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

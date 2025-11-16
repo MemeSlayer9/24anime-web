@@ -598,9 +598,11 @@ function AnimePahePlayer() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
       <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-3 sm:space-y-6">
-        <div 
+         <div 
           ref={containerRef}
-          className="relative w-full bg-black rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl group"
+          className={`relative w-full bg-black overflow-hidden shadow-2xl group ${
+            isFullscreen ? 'h-screen' : 'rounded-xl sm:rounded-2xl'
+          }`}
           onMouseMove={resetControlsTimeout}
           onMouseLeave={() => isPlaying && setShowControls(false)}
         >
@@ -608,15 +610,16 @@ function AnimePahePlayer() {
             <>
               <video
                 ref={videoRef}
-                className="w-full aspect-video bg-black pointer-events-auto"
-                style={{ objectFit: 'contain' }}
+                className={`w-full bg-black pointer-events-auto ${
+                  isFullscreen ? 'h-screen' : 'aspect-video'
+                }`}
+                style={{ objectFit: isFullscreen ? 'contain' : 'contain' }}
                 playsInline
                 onClick={togglePlay}
                 disablePictureInPicture
                 disableRemotePlayback
                 onContextMenu={(e) => e.preventDefault()}
               />
-              
               <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity duration-300 pointer-events-none ${showControls ? 'opacity-100' : 'opacity-0'}`}>
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
                   <button
