@@ -267,14 +267,15 @@ function Carousel() {
             pointerEvents: index === currentIndex ? 'auto' : 'none'
           }}
         >
-          <img
-            src={item.cover || item.image}
+        <img
+            src={isMobile ? (item.image || item.cover) : (item.cover || item.image)}
             alt={item.title.english || item.title.romaji || ""}
             className="w-full h-full object-cover"
             draggable="false"
             onError={(e) => {
-              if (e.currentTarget.src === item.cover) {
-                e.currentTarget.src = item.image;
+              const fallbackSrc = isMobile ? item.cover : item.image;
+              if (fallbackSrc && e.currentTarget.src !== fallbackSrc) {
+                e.currentTarget.src = fallbackSrc;
               }
             }}
           />

@@ -225,23 +225,29 @@ if (loading) {
     <div className="min-h-screen #0a0a0a"  style={{ margin: '2rem 3rem' }}>
       {/* Hero Section with Cover */}
       <div className="relative w-full h-[500px]">
-             <img
-  src={animeData.cover || animeData.image}
-  alt={title}
-  className="w-full h-full object-cover"
-/>
-<div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/50 to-transparent" />
-<div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a]/120 via-transparent to-transparent" />
-<div className="absolute inset-0 bg-gradient-to-l from-[#0a0a0a]/120 via-transparent to-transparent" />
-<div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a]/100 via-transparent to-transparent" />
-         
+        {/* Small screens - use image */}
+        <img
+          src={animeData.image}
+          alt={title}
+          className="md:hidden w-full h-full object-cover"
+        />
+        {/* Large screens - use cover */}
+        <img
+          src={animeData.cover || animeData.image}
+          alt={title}
+          className="hidden md:block w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a]/120 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-l from-[#0a0a0a]/120 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a]/100 via-transparent to-transparent" />
       </div>
 
       {/* Content Section */}
       <div className="container mx-auto px-6 -mt-64 relative z-10" >
         <div className="flex flex-col md:flex-row gap-8">
-          {/* Poster */}
-         <div className="flex-shrink-0 mx-auto md:mx-0">
+          {/* Poster - Hidden on small screens */}
+          <div className="hidden md:block flex-shrink-0">
             <img
               src={animeData.image}
               alt={title}
@@ -395,17 +401,14 @@ if (loading) {
 
           {!episodesLoading && episodes.length > 0 && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-4">
                 {displayedEpisodes.map((episode) => (
                   <div
                     key={episode.episodeId}
                     onClick={() => {
                       if (selectedProvider === 'animepahe') {
-                        // For animepahe, use router.push with proper encoding
-                        // Don't encode the episodeId here - let Next.js handle it
                         window.location.href = `/animepahe/${episode.episodeId}?animeId=${animeId}`;
                       } else {
-                        // For other providers, use generic player
                         const playerUrl = `/player?episodeId=${encodeURIComponent(episode.episodeId)}&provider=${selectedProvider}&animeId=${animeId}`;
                         window.location.href = playerUrl;
                       }
@@ -424,23 +427,23 @@ if (loading) {
                         </div>
                       </div>
                     )}
-                    <div className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-red-500 font-semibold text-sm">
-                          Episode {episode.episodeNumber}
+                    <div className="p-2 md:p-4">
+                      <div className="flex items-center justify-between mb-1 md:mb-2">
+                        <span className="text-red-500 font-semibold text-xs md:text-sm">
+                          Ep {episode.episodeNumber}
                         </span>
                         {episode.rating && (
-                          <div className="flex items-center gap-1 text-yellow-500 text-sm">
+                          <div className="flex items-center gap-1 text-yellow-500 text-xs md:text-sm">
                             <StarIcon />
-                            <span>{episode.rating}</span>
+                            <span className="hidden sm:inline">{episode.rating}</span>
                           </div>
                         )}
                       </div>
-                      <h3 className="text-white font-medium text-sm line-clamp-2 mb-2">
+                      <h3 className="text-white font-medium text-xs md:text-sm line-clamp-2 mb-1 md:mb-2">
                         {episode.title}
                       </h3>
                       {episode.airDate && (
-                        <p className="text-gray-400 text-xs flex items-center gap-1">
+                        <p className="text-gray-400 text-xs hidden md:flex items-center gap-1">
                           <CalendarIcon />
                           {new Date(episode.airDate).toLocaleDateString()}
                         </p>
@@ -451,10 +454,10 @@ if (loading) {
               </div>
 
               {episodes.length > 12 && (
-                <div className="text-center mt-8">
+                <div className="text-center mt-6 md:mt-8">
                   <button
                     onClick={() => setShowAllEpisodes(!showAllEpisodes)}
-                    className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-all"
+                    className="bg-gray-800 hover:bg-gray-700 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg font-semibold transition-all text-sm md:text-base"
                   >
                     {showAllEpisodes ? 'Show Less' : `Show All ${episodes.length} Episodes`}
                   </button>
