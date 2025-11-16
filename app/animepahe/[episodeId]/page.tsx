@@ -820,10 +820,7 @@ function AnimePahePlayer() {
                       </div>
                     )}
                   </div>
-                  
-                  <div className="text-xs sm:text-sm text-red-400 font-semibold tracking-wider uppercase">
-                    NOW WATCHING
-                  </div>
+                   
                   <h2 className="text-lg sm:text-2xl font-bold text-red-500">
                     Episode {currentEpisode.episodeNumber}
                   </h2>

@@ -222,9 +222,9 @@ if (loading) {
   const displayedEpisodes = showAllEpisodes ? episodes : episodes.slice(0, 12);
 
   return (
-    <div className="min-h-screen #0a0a0a"  style={{ margin: '2rem 3rem' }}>
+    <div className="min-h-screen bg-[#0a0a0a]">
       {/* Hero Section with Cover */}
-      <div className="relative w-full h-[500px]">
+      <div className="relative w-full h-[300px] sm:h-[400px] md:h-[500px]">
         {/* Small screens - use image */}
         <img
           src={animeData.image}
@@ -244,48 +244,48 @@ if (loading) {
       </div>
 
       {/* Content Section */}
-      <div className="container mx-auto px-6 -mt-64 relative z-10" >
+      <div className="container mx-auto px-4 sm:px-6 -mt-32 sm:-mt-48 md:-mt-64 relative z-10">
         <div className="flex flex-col md:flex-row gap-8">
           {/* Poster - Hidden on small screens */}
           <div className="hidden md:block flex-shrink-0">
             <img
               src={animeData.image}
               alt={title}
-              className="w-64 h-96 object-cover rounded-lg shadow-2xl"
+              className="w-48 h-72 lg:w-64 lg:h-96 object-cover rounded-lg shadow-2xl"
             />
           </div>
 
           {/* Details */}
-          <div className="flex-1 space-y-6">
+          <div className="flex-1 space-y-4 md:space-y-6">
             {/* Title */}
-            <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight">
               {title}
             </h1>
 
             
 
             {/* Meta Info */}
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 md:gap-3">
               {animeData.rating && (
-                <div className="flex items-center gap-2 bg-yellow-500/90 text-black px-4 py-2 rounded-full font-semibold">
+                <div className="flex items-center gap-1 md:gap-2 bg-yellow-500/90 text-black px-3 md:px-4 py-1.5 md:py-2 rounded-full font-semibold text-sm md:text-base">
                   <StarIcon />
                   <span>{(animeData.rating / 10).toFixed(1)}</span>
                 </div>
               )}
-              <span className="bg-black/40 backdrop-blur-sm text-white border border-red-900/30 px-4 py-2 rounded-full font-medium">
+              <span className="bg-black/40 backdrop-blur-sm text-white border border-red-900/30 px-3 md:px-4 py-1.5 md:py-2 rounded-full font-medium text-xs md:text-sm">
                 {animeData.type}
               </span>
-              <span className="bg-black/40 backdrop-blur-sm text-white border border-red-900/30 px-4 py-2 rounded-full font-medium flex items-center gap-2">
+              <span className="bg-black/40 backdrop-blur-sm text-white border border-red-900/30 px-3 md:px-4 py-1.5 md:py-2 rounded-full font-medium flex items-center gap-1 md:gap-2 text-xs md:text-sm">
                 <CalendarIcon />
                 {animeData.releaseDate}
               </span>
               {animeData.duration && (
-                <span className="bg-black/40 backdrop-blur-sm text-white border border-red-900/30 px-4 py-2 rounded-full font-medium flex items-center gap-2">
+                <span className="bg-black/40 backdrop-blur-sm text-white border border-red-900/30 px-3 md:px-4 py-1.5 md:py-2 rounded-full font-medium flex items-center gap-1 md:gap-2 text-xs md:text-sm">
                   <ClockIcon />
                   {animeData.duration} min
                 </span>
               )}
-              <span className={`px-4 py-2 rounded-full font-medium ${
+              <span className={`px-3 md:px-4 py-1.5 md:py-2 rounded-full font-medium text-xs md:text-sm ${
                 animeData.status === 'Ongoing' 
                   ? 'bg-red-600/90 text-white' 
                   : 'bg-red-800/90 text-white'
@@ -297,12 +297,12 @@ if (loading) {
             {/* Genres */}
             {animeData.genres && animeData.genres.length > 0 && (
               <div>
-                <h3 className="text-white text-lg font-semibold mb-3">Genres</h3>
+                <h3 className="text-white text-base md:text-lg font-semibold mb-2 md:mb-3">Genres</h3>
                 <div className="flex flex-wrap gap-2">
                   {animeData.genres.map((genre, idx) => (
                     <span 
                       key={idx}
-                      className="text-sm text-white/80 border border-white/30 px-4 py-2 rounded-full backdrop-blur-sm hover:bg-white/10 transition-all"
+                      className="text-xs md:text-sm text-white/80 border border-white/30 px-3 md:px-4 py-1.5 md:py-2 rounded-full backdrop-blur-sm hover:bg-white/10 transition-all"
                     >
                       {genre}
                     </span>
@@ -313,8 +313,8 @@ if (loading) {
 
             {/* Description */}
             <div>
-              <h3 className="text-white text-lg font-semibold mb-3">Synopsis</h3>
-              <p className="text-gray-300 leading-relaxed">
+              <h3 className="text-white text-base md:text-lg font-semibold mb-2 md:mb-3">Synopsis</h3>
+              <p className="text-gray-300 leading-relaxed text-sm md:text-base">
                 {animeData.description?.replace(/<[^>]*>/g, '') || "No description available"}
               </p>
             </div>
@@ -322,12 +322,12 @@ if (loading) {
             {/* Studios */}
             {animeData.studios && animeData.studios.length > 0 && (
               <div>
-                <h3 className="text-white text-lg font-semibold mb-3">Studios</h3>
+                <h3 className="text-white text-base md:text-lg font-semibold mb-2 md:mb-3">Studios</h3>
                 <div className="flex flex-wrap gap-2">
                   {animeData.studios.map((studio, idx) => (
                     <span 
                       key={idx}
-                      className="text-sm text-white bg-gray-800 px-4 py-2 rounded-lg"
+                      className="text-xs md:text-sm text-white bg-gray-800 px-3 md:px-4 py-1.5 md:py-2 rounded-lg"
                     >
                       {studio}
                     </span>
@@ -340,9 +340,9 @@ if (loading) {
 
             {/* Episodes Info */}
             {animeData.totalEpisodes && (
-              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-4">
-                <h3 className="text-white text-lg font-semibold mb-2">Episodes</h3>
-                <p className="text-gray-300">
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-3 md:p-4">
+                <h3 className="text-white text-base md:text-lg font-semibold mb-1 md:mb-2">Episodes</h3>
+                <p className="text-gray-300 text-sm md:text-base">
                   Total Episodes: <span className="text-white font-semibold">{animeData.totalEpisodes}</span>
                 </p>
               </div>
@@ -351,25 +351,25 @@ if (loading) {
         </div>
 
         {/* Episodes Section */}
-        <div className="mt-16">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+        <div className="mt-8 md:mt-16">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 md:mb-6 gap-3 md:gap-4">
+            <h2 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2 md:gap-3">
               <TvIcon />
               Episodes
             </h2>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 md:gap-3 w-full sm:w-auto">
               {episodes.length > 0 && (
-                <span className="text-gray-400 text-sm">
+                <span className="text-gray-400 text-xs md:text-sm">
                   {episodes.length} episodes
                 </span>
               )}
               {/* Provider Selector */}
-              <div className="flex items-center gap-2">
-                <label className="text-gray-400 text-sm">Provider:</label>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <label className="text-gray-400 text-xs md:text-sm whitespace-nowrap">Provider:</label>
                 <select
                   value={selectedProvider}
                   onChange={(e) => setSelectedProvider(e.target.value)}
-                  className="bg-gray-800 text-white border border-gray-700 rounded-lg px-4 py-2 text-sm font-medium hover:border-red-500/50 focus:border-red-500 focus:outline-none transition-all cursor-pointer"
+                  className="bg-gray-800 text-white border border-gray-700 rounded-lg px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium hover:border-red-500/50 focus:border-red-500 focus:outline-none transition-all cursor-pointer w-full sm:w-auto"
                 >
                   {providers.map((provider) => (
                     <option key={provider} value={provider}>
@@ -401,7 +401,7 @@ if (loading) {
 
           {!episodesLoading && episodes.length > 0 && (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                 {displayedEpisodes.map((episode) => (
                   <div
                     key={episode.episodeId}
