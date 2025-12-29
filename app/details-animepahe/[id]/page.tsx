@@ -2,16 +2,118 @@
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import type { AnimeDetails, Episode, Recommendation, Character, Relation } from "@/app/types/anime";
 
-interface AnimeyyEpisode {
-  episode: string;
-  episodeId: string;
-  url: string;
+interface AnimeDetails {
+  id: string;
+  malId?: number;
+  anilistId?: number;
+  name?: string;
+  romaji?: string;
+  english?: string;
+  native?: string;
+  userPreferred?: string;
+  title?: {
+    romaji?: string;
+    english?: string;
+    native?: string;
+    userPreferred?: string;
+  };
+  image: string;
+  cover: string;
+  description: string;
+  status: string;
+  releaseDate: number;
+  rating?: number;
+  genres?: string[];
+  totalEpisodes: number | null;
+  duration?: number;
+  type: string;
+  studios?: string[] | Array<{ name: string }>;
+  season?: string;
+  popularity?: number;
+  episodes?: Episode[];
+  recommendations?: Recommendation[];
+  characters?: Character[];
+  relations?: Relation[];
+  trailer?: {
+    id?: string;
+    site?: string;
+    thumbnail?: string;
+  };
+  synonyms?: string[];
+  color?: string;
 }
 
-interface AnimeyyResponse {
-  episodes: AnimeyyEpisode[];
+interface Episode {
+  episodeNumber: number;
+  episodeId: string;
+  title: string;
+  rating?: string;
+  aired?: boolean;
+  airDate?: string;
+  overview?: string;
+  thumbnail?: string;
+  provider?: string;
+}
+
+interface Recommendation {
+  id: number;
+  malId?: number;
+  title: {
+    romaji?: string;
+    english?: string;
+    native?: string;
+    userPreferred?: string;
+  };
+  status: string;
+  episodes: number;
+  image: string;
+  cover?: string;
+  rating?: number;
+  type: string;
+}
+
+interface Character {
+  id: number;
+  role: string;
+  name: {
+    first?: string;
+    last?: string;
+    full?: string;
+    native?: string;
+    userPreferred?: string;
+  };
+  image: string;
+  voiceActors?: Array<{
+    id: number;
+    language: string;
+    name: {
+      first?: string;
+      last?: string;
+      full?: string;
+      native?: string;
+    };
+    image: string;
+  }>;
+}
+
+interface Relation {
+  id: number;
+  relationType: string;
+  malId?: number;
+  title: {
+    romaji?: string;
+    english?: string;
+    native?: string;
+    userPreferred?: string;
+  };
+  status: string;
+  episodes?: number;
+  image: string;
+  color?: string;
+  type: string;
+  cover?: string;
+  rating?: number;
 }
 
 const PlayIcon = () => (
@@ -85,14 +187,9 @@ function AnimeDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [episodesError, setEpisodesError] = useState<string | null>(null);
   const [showAllEpisodes, setShowAllEpisodes] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<string>("animepahe");
   const [activeTab, setActiveTab] = useState<"characters" | "recommendations" | "relations" | "info" | "episodes">("info");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [episodeRange, setEpisodeRange] = useState<string>("all");
-  const [animeyyId, setAnimeyyId] = useState<string | null>(null);
-
-  const baseProviders = ["hianime", "animepahe"];
-  const providers = animeyyId ? [...baseProviders, "animekai"] : baseProviders;
 
   useEffect(() => {
     const hash = window.location.hash.replace('#', '');
@@ -104,67 +201,76 @@ function AnimeDetailsPage() {
     }
   }, []);
 
-
+  // Update document title when anime data is loaded
   useEffect(() => {
-      if (animeData) {
-        const title = animeData.title?.english || animeData.title?.romaji || animeData.title?.userPreferred ||  "Anime Details";
-        document.title = `${title} - Anime Details`;
-        
-        // Update meta description
-        const description = animeData.description?.replace(/<[^>]*>/g, '').substring(0, 160) || "Watch anime online";
-        const metaDescription = document.querySelector('meta[name="description"]');
-        if (metaDescription) {
-          metaDescription.setAttribute('content', description);
+    if (animeData) {
+      // Filter out "Bookmark" prefix from name field
+      const getName = () => {
+        const name = animeData.name;
+        if (name && name.toLowerCase().includes('bookmark')) {
+          return null;
+        }
+        return name;
+      };
+      
+      const title = animeData.title?.english || animeData.title?.romaji || animeData.title?.userPreferred || animeData.english || animeData.romaji || getName() || "Anime Details";
+      document.title = `${title} - Anime Details`;
+      
+      // Update meta description
+      const description = animeData.description?.replace(/<[^>]*>/g, '').substring(0, 160) || "Watch anime online";
+      const metaDescription = document.querySelector('meta[name="description"]');
+      if (metaDescription) {
+        metaDescription.setAttribute('content', description);
+      } else {
+        const meta = document.createElement('meta');
+        meta.name = 'description';
+        meta.content = description;
+        document.head.appendChild(meta);
+      }
+
+      // Update Open Graph meta tags
+      const updateOrCreateMeta = (property: string, content: string) => {
+        let meta = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
+        if (meta) {
+          meta.content = content;
         } else {
-          const meta = document.createElement('meta');
-          meta.name = 'description';
-          meta.content = description;
+          meta = document.createElement('meta');
+          meta.setAttribute('property', property);
+          meta.content = content;
           document.head.appendChild(meta);
         }
-  
-        // Update Open Graph meta tags
-        const updateOrCreateMeta = (property: string, content: string) => {
-          let meta = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
-          if (meta) {
-            meta.content = content;
-          } else {
-            meta = document.createElement('meta');
-            meta.setAttribute('property', property);
-            meta.content = content;
-            document.head.appendChild(meta);
-          }
-        };
-  
-        updateOrCreateMeta('og:title', title);
-        updateOrCreateMeta('og:description', description);
-        updateOrCreateMeta('og:image', animeData.image);
-        updateOrCreateMeta('og:type', 'video.tv_show');
-        
-        // Twitter Card meta tags
-        const updateOrCreateTwitterMeta = (name: string, content: string) => {
-          let meta = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
-          if (meta) {
-            meta.content = content;
-          } else {
-            meta = document.createElement('meta');
-            meta.name = name;
-            meta.content = content;
-            document.head.appendChild(meta);
-          }
-        };
-  
-        updateOrCreateTwitterMeta('twitter:card', 'summary_large_image');
-        updateOrCreateTwitterMeta('twitter:title', title);
-        updateOrCreateTwitterMeta('twitter:description', description);
-        updateOrCreateTwitterMeta('twitter:image', animeData.image);
-      }
-  
-      // Cleanup function to reset title when component unmounts
-      return () => {
-        document.title = 'Anime Details';
       };
-    }, [animeData]);
- 
+
+      updateOrCreateMeta('og:title', title);
+      updateOrCreateMeta('og:description', description);
+      updateOrCreateMeta('og:image', animeData.image);
+      updateOrCreateMeta('og:type', 'video.tv_show');
+      
+      // Twitter Card meta tags
+      const updateOrCreateTwitterMeta = (name: string, content: string) => {
+        let meta = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement;
+        if (meta) {
+          meta.content = content;
+        } else {
+          meta = document.createElement('meta');
+          meta.name = name;
+          meta.content = content;
+          document.head.appendChild(meta);
+        }
+      };
+
+      updateOrCreateTwitterMeta('twitter:card', 'summary_large_image');
+      updateOrCreateTwitterMeta('twitter:title', title);
+      updateOrCreateTwitterMeta('twitter:description', description);
+      updateOrCreateTwitterMeta('twitter:image', animeData.image);
+    }
+
+    // Cleanup function to reset title when component unmounts
+    return () => {
+      document.title = 'Anime Details';
+    };
+  }, [animeData]);
+
   useEffect(() => {
     async function fetchAnimeDetails() {
       if (!animeId) return;
@@ -172,115 +278,80 @@ function AnimeDetailsPage() {
       try {
         setLoading(true);
         setError(null);
+        setEpisodesLoading(true);
+        setEpisodesError(null);
         
-        const response = await axios.get<AnimeDetails>(
-          `https://makgago.vercel.app/meta/anilist/info/${animeId}`
+        // Fetch from Kenjitsu API
+        const response = await axios.get(
+          `https://kenjitsu.vercel.app/api/animepahe/anime/${animeId}`,
+          {
+            params: { provider: "animepahe" }
+          }
         );
         
-        setAnimeData(response.data);
+        // Set anime data from the 'data' property
+        if (response.data.data) {
+          let mergedData = response.data.data;
+          
+          // If we have an anilistId, fetch additional data from AniList API
+          const anilistId = response.data.data.anilistId;
+          if (anilistId) {
+            try {
+              const anilistResponse = await axios.get(
+                `https://makgago.vercel.app/meta/anilist/info/${anilistId}`
+              );
+              
+              // Merge AniList data with existing anime data
+              if (anilistResponse.data) {
+                mergedData = {
+                  ...mergedData,
+                  // Add/override with AniList data
+                  characters: anilistResponse.data.characters || mergedData.characters || [],
+                  recommendations: anilistResponse.data.recommendations || mergedData.recommendations || [],
+                  relations: anilistResponse.data.relations || mergedData.relations || [],
+                  trailer: anilistResponse.data.trailer || mergedData.trailer,
+                  synonyms: anilistResponse.data.synonyms || mergedData.synonyms,
+                  color: anilistResponse.data.color || mergedData.color,
+                  // Preserve original data for critical fields, fallback to AniList
+                  image: mergedData.image || anilistResponse.data.image,
+                  cover: mergedData.cover || anilistResponse.data.cover,
+                  description: mergedData.description || anilistResponse.data.description,
+                };
+              }
+            } catch (anilistErr) {
+              console.error("Error fetching AniList data:", anilistErr);
+              // Don't fail the whole request if AniList data fails
+            }
+          }
+          
+          setAnimeData(mergedData);
+        }
+        
+        // Set episodes from the 'providerEpisodes' property
+        if (response.data.providerEpisodes && Array.isArray(response.data.providerEpisodes)) {
+          setEpisodes(response.data.providerEpisodes);
+        } else {
+          setEpisodes([]);
+        }
+        
+        setEpisodesLoading(false);
       } catch (err) {
         console.error("Error fetching anime details:", err);
         if (axios.isAxiosError(err)) {
-          setError(err.response?.data?.message || err.message || "Failed to load anime details");
+          const errorMessage = err.response?.data?.message || err.message || "Failed to load anime details";
+          setError(errorMessage);
+          setEpisodesError(errorMessage);
         } else {
           setError("Failed to load anime details");
+          setEpisodesError("Failed to load episodes");
         }
+        setEpisodesLoading(false);
       } finally {
         setLoading(false);
       }
     }
 
     fetchAnimeDetails();
-  }, [animeId]);
-
-  useEffect(() => {
-    async function fetchEpisodes() {
-      if (!animeId) return;
-      
-      // For animekai, we need animeyyId
-      if (selectedProvider === 'animekai' && !animeyyId) {
-        setEpisodes([]);
-        return;
-      }
-
-      try {
-        setEpisodesLoading(true);
-        setEpisodesError(null);
-        
-        let response;
-        
-        if (selectedProvider === 'animekai') {
-          // Use animeyy API endpoint with animeyyId
-          response = await axios.get(
-            `https://animeyy-api.vercel.app/api/info/${animeyyId}/${animeId}?all_pages=true`
-          );
-          
-          // Map animeyy episodes to Episode interface
-          const animeyyData = response.data as AnimeyyResponse;
-          if (animeyyData.episodes && Array.isArray(animeyyData.episodes)) {
-            const mappedEpisodes: Episode[] = animeyyData.episodes
-              .map((ep: AnimeyyEpisode) => ({
-                episodeNumber: parseInt(ep.episode) || 0,
-                episodeId: ep.episodeId,
-                title: `Episode ${ep.episode}`
-              }))
-              .sort((a, b) => a.episodeNumber - b.episodeNumber); // Sort by episode number ascending
-            
-            setEpisodes(mappedEpisodes);
-          } else {
-            setEpisodes([]);
-          }
-        } else {
-          // Use anilist episodes endpoint for other providers
-          response = await axios.get(
-            `https://kenjitsu.vercel.app/api/anilist/episodes/${animeId}`,
-            {
-              params: { provider: selectedProvider }
-            }
-          );
-          
-          if (response.data.providerEpisodes && Array.isArray(response.data.providerEpisodes)) {
-            setEpisodes(response.data.providerEpisodes);
-          } else {
-            setEpisodes([]);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching episodes:", err);
-        if (axios.isAxiosError(err)) {
-          setEpisodesError(err.response?.data?.message || err.message || "Failed to load episodes");
-        } else {
-          setEpisodesError("Failed to load episodes");
-        }
-      } finally {
-        setEpisodesLoading(false);
-      }
-    }
-
-    fetchEpisodes();
-  }, [animeId, selectedProvider, animeyyId]);
-
-  useEffect(() => {
-    async function fetchAnimeyyId() {
-      if (!animeId) return;
-
-      try {
-        const response = await axios.get(
-          `https://animeyy-api.vercel.app/api/anilist/${animeId}`
-        );
-        
-        if (response.data?.animeyy?.found && response.data.animeyy.bestMatch?.animeId) {
-          setAnimeyyId(response.data.animeyy.bestMatch.animeId);
-        } else {
-          setAnimeyyId(null);
-        }
-      } catch (err) {
-        console.error("Error fetching animeyy ID:", err);
-        setAnimeyyId(null);
-      }
-    }
-
-    fetchAnimeyyId();
   }, [animeId]);
 
   useEffect(() => {
@@ -311,15 +382,7 @@ function AnimeDetailsPage() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <img 
-            src="/loading.gif" 
-            alt="Loading..." 
-            className="w-48 h-48 md:w-64 md:h-64 object-contain"
-            style={{ 
-              mixBlendMode: 'screen',
-              filter: 'contrast(1.2) brightness(1.1)'
-            }}
-          />
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500"></div>
           <p className="text-red-500 text-sm md:text-base animate-pulse font-semibold">Loading anime details...</p>
         </div>
       </div>
@@ -354,7 +417,17 @@ function AnimeDetailsPage() {
     );
   }
 
-  const title = animeData.title.english || animeData.title.romaji || animeData.title.userPreferred || "Unknown Title";
+  // Get title, excluding "name" field if it contains "Bookmark"
+  const getName = () => {
+    const name = animeData.name;
+    if (name && name.toLowerCase().includes('bookmark')) {
+      return null;
+    }
+    return name;
+  };
+  
+  const title = animeData.title?.english || animeData.title?.romaji || animeData.title?.userPreferred || animeData.english || animeData.romaji || getName() || "Unknown Title";
+  const nativeTitle = animeData.title?.native || animeData.native;
   
   const filteredEpisodes = episodes.filter((episode) => {
     const matchesSearch = searchQuery === "" || 
@@ -374,7 +447,6 @@ function AnimeDetailsPage() {
 
   return (
     <div className="min-h-screen bg-black">
-      {/* Hero Section */}
       <div className="relative w-full h-[400px] md:h-[500px] overflow-hidden">
         <img
           src={animeData.image}
@@ -387,9 +459,8 @@ function AnimeDetailsPage() {
           className="hidden md:block w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
-         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent" />
         
-        {/* Content Overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8">
           <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-center md:items-start ml-4 sm:ml-6 md:ml-8 lg:ml-12 xl:ml-30">
             <div className="flex-shrink-0 hidden md:block">
@@ -400,14 +471,13 @@ function AnimeDetailsPage() {
               />
             </div>
 
-            {/* Title and Meta */}
             <div className="flex-1 space-y-3 text-center md:text-left mt-8 md:mt-0">
               <div>
                 <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-white leading-tight mb-1 drop-shadow-2xl">
                   {title}
                 </h1>
-                {animeData.title.native && (
-                  <p className="text-sm md:text-base text-gray-400 font-light">{animeData.title.native}</p>
+                {nativeTitle && (
+                  <p className="text-sm md:text-base text-gray-400 font-light">{nativeTitle}</p>
                 )}
               </div>
 
@@ -452,11 +522,8 @@ function AnimeDetailsPage() {
         </div>
       </div>
 
-      {/* Main Content */}
-     <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        {/* Tabs Section */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         <div className="mb-8">
-          {/* Tab Headers */}
           <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
             <button
               onClick={() => setActiveTab("info")}
@@ -525,12 +592,9 @@ function AnimeDetailsPage() {
             )}
           </div>
 
-          {/* Tab Content */}
           <div className="bg-black/40 backdrop-blur-sm rounded-2xl border-2 border-red-500/20 p-6">
-            {/* Info Tab */}
             {activeTab === "info" && (
               <div className="space-y-8">
-                {/* Synopsis */}
                 <div>
                   <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
                     <div className="w-1 h-6 bg-red-500 rounded"></div>
@@ -540,7 +604,8 @@ function AnimeDetailsPage() {
                     {animeData.description?.replace(/<[^>]*>/g, '') || "No description available"}
                   </p>
                 </div>
-                   {animeData.trailer && animeData.trailer.id && (
+
+                {animeData.trailer && animeData.trailer.id && (
                   <div>
                     <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
                       <div className="w-1 h-6 bg-red-500 rounded"></div>
@@ -556,7 +621,7 @@ function AnimeDetailsPage() {
                     </div>
                   </div>
                 )}
-                {/* Genres */}
+
                 {animeData.genres && animeData.genres.length > 0 && (
                   <div>
                     <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
@@ -576,8 +641,7 @@ function AnimeDetailsPage() {
                   </div>
                 )}
 
-                {/* Studios */}
-                {animeData.studios && animeData.studios.length > 0 && (
+                {animeData.studios && Array.isArray(animeData.studios) && animeData.studios.length > 0 && (
                   <div>
                     <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
                       <div className="w-1 h-6 bg-red-500 rounded"></div>
@@ -589,7 +653,26 @@ function AnimeDetailsPage() {
                           key={idx}
                           className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 border border-blue-500/50 text-blue-300 px-4 py-2 rounded-lg text-sm font-semibold"
                         >
-                          {studio}
+                          {typeof studio === 'string' ? studio : studio.name || 'Unknown Studio'}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {animeData.synonyms && animeData.synonyms.length > 0 && (
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                      <div className="w-1 h-6 bg-red-500 rounded"></div>
+                      Alternative Titles
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {animeData.synonyms.slice(0, 5).map((synonym, idx) => (
+                        <span
+                          key={idx}
+                          className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/50 text-purple-300 px-3 py-1.5 rounded-lg text-sm"
+                        >
+                          {synonym}
                         </span>
                       ))}
                     </div>
@@ -598,32 +681,8 @@ function AnimeDetailsPage() {
               </div>
             )}
 
-            {/* Episodes Tab */}
             {activeTab === "episodes" && (
               <div className="space-y-6">
-                {/* Provider Selection */}
-                {(episodes.length > 0 || animeyyId) && (
-                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                    <div className="w-full sm:w-auto">
-                      <label className="block text-sm font-semibold text-gray-400 mb-2">
-                        Select Provider
-                      </label>
-                      <select
-                        value={selectedProvider}
-                        onChange={(e) => setSelectedProvider(e.target.value)}
-                        className="w-full md:w-48 bg-black/60 text-white text-sm border-2 border-red-500/50 rounded-lg px-3 py-2 font-semibold hover:border-red-500 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all cursor-pointer shadow-lg"
-                      >
-                        {providers.map((provider) => (
-                          <option key={provider} value={provider}>
-                            {provider === 'animekai' ? 'Animekai' : provider.charAt(0).toUpperCase() + provider.slice(1)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
-
-                {/* Search and Filter */}
                 {episodes.length > 0 && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="relative">
@@ -667,7 +726,6 @@ function AnimeDetailsPage() {
                   </div>
                 )}
 
-                {/* Loading State */}
                 {episodesLoading && (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-red-500 mx-auto mb-4"></div>
@@ -675,7 +733,6 @@ function AnimeDetailsPage() {
                   </div>
                 )}
 
-                {/* Error State */}
                 {episodesError && (
                   <div className="text-center py-12">
                     <div className="text-6xl mb-4">⚠️</div>
@@ -683,29 +740,14 @@ function AnimeDetailsPage() {
                   </div>
                 )}
 
-                {/* No Episodes */}
                 {!episodesLoading && !episodesError && episodes.length === 0 && (
                   <div className="text-center py-12">
                     <div className="text-6xl mb-4">📺</div>
-                    <h3 className="text-2xl font-bold text-white mb-2">No episodes available for {selectedProvider}</h3>
-                    <p className="text-gray-400 mb-6">Try selecting a different provider above</p>
-                    <div className="flex flex-wrap gap-3 justify-center">
-                      {providers
-                        .filter(p => p !== selectedProvider)
-                        .map((provider) => (
-                          <button
-                            key={provider}
-                            onClick={() => setSelectedProvider(provider)}
-                            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white text-sm px-4 py-2 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-red-500/50"
-                          >
-                            Try {provider.charAt(0).toUpperCase() + provider.slice(1)}
-                          </button>
-                        ))}
-                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">No episodes available</h3>
+                    <p className="text-gray-400">Episodes will be available soon</p>
                   </div>
                 )}
 
-                {/* No Search Results */}
                 {!episodesLoading && episodes.length > 0 && filteredEpisodes.length === 0 && (
                   <div className="text-center py-12">
                     <div className="text-6xl mb-4">🔍</div>
@@ -714,7 +756,6 @@ function AnimeDetailsPage() {
                   </div>
                 )}
 
-                {/* Episodes Grid */}
                 {!episodesLoading && episodes.length > 0 && filteredEpisodes.length > 0 && (
                   <>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -722,16 +763,7 @@ function AnimeDetailsPage() {
                         <div
                           key={episode.episodeId}
                           onClick={() => {
-                            if (selectedProvider === 'animepahe') {
-                              window.location.href = `/Watch/animepahe/${encodeURIComponent(episode.episodeId)}?animeId=${animeId}`;
-                            } else if (selectedProvider === 'hianime') {
-                              window.location.href = `/Watch/hianime/${encodeURIComponent(episode.episodeId)}?animeId=${animeId}`;
-                            } else if (selectedProvider === 'animekai' && animeyyId) {
-                              window.location.href = `/Watch/animekai/${encodeURIComponent(episode.episodeId)}?animeId=${animeyyId}/${animeId}`;
-                            } else {
-                              const playerUrl = `/Watch/Player/episodeId=${encodeURIComponent(episode.episodeId)}&provider=${selectedProvider}&animeId=${animeId}`;
-                              window.location.href = playerUrl;
-                            }
+                            window.location.href = `/Watch/animepahe2/${episode.episodeId}?animeId=${animeId}`;
                           }}
                           className="group bg-black/60 backdrop-blur-sm border-2 border-red-500/20 rounded-lg overflow-hidden hover:border-red-500 hover:shadow-2xl hover:shadow-red-500/40 transition-all cursor-pointer transform hover:scale-105"
                         >
@@ -754,7 +786,7 @@ function AnimeDetailsPage() {
                           )}
                           <div className="p-3">
                             <h4 className="text-white font-semibold text-sm line-clamp-2 mb-1">
-                              {episode.title}
+                              {episode.title || `Episode ${episode.episodeNumber}`}
                             </h4>
                             {episode.airDate && (
                               <p className="text-gray-400 text-xs">
@@ -766,7 +798,6 @@ function AnimeDetailsPage() {
                       ))}
                     </div>
 
-                    {/* Show More Button */}
                     {filteredEpisodes.length > 12 && (
                       <div className="flex justify-center mt-6">
                         <button
@@ -782,8 +813,7 @@ function AnimeDetailsPage() {
               </div>
             )}
 
-            {/* Characters Tab */}
-             {activeTab === "characters" && animeData.characters && (
+            {activeTab === "characters" && animeData.characters && (
               <div>
                 <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
                   <div className="w-1 h-6 bg-red-500 rounded"></div>
@@ -837,89 +867,98 @@ function AnimeDetailsPage() {
               </div>
             )}
 
-            {/* Recommendations Tab */}
             {activeTab === "recommendations" && animeData.recommendations && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {animeData.recommendations.slice(0, 10).map((rec) => {
-                  const recTitle = rec.title.english || rec.title.romaji || rec.title.userPreferred || "Unknown Title";
-                  return (
-                    <div
-                      key={rec.id}
-                      onClick={() => window.location.href = `/details/${rec.id}`}
-                      className="group bg-black/60 backdrop-blur-sm border-2 border-red-500/20 rounded-xl overflow-hidden hover:border-red-500 hover:shadow-2xl hover:shadow-red-500/30 transition-all cursor-pointer transform hover:scale-105"
-                    >
-                      <div className="relative aspect-[2/3] overflow-hidden">
-                        <img
-                          src={getWeservImage(rec.image, 400)}
-                          alt={recTitle}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                        />
-                        {rec.rating && (
-                          <div className="absolute top-2 right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
-                            <StarIcon />
-                            {(rec.rating / 10).toFixed(1)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-3">
-                        <h4 className="text-white font-semibold text-sm line-clamp-2 mb-1">
-                          {recTitle}
-                        </h4>
-                        <p className="text-gray-400 text-xs">{rec.type} • {rec.episodes} eps</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Relations Tab */}
-            {activeTab === "relations" && animeData.relations && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {animeData.relations
-                  .filter((relation) => relation.type !== "MANGA" && relation.type !== "NOVEL" && relation.type !== "MUSIC")
-                  .map((relation) => {
-                    const relTitle = relation.title.english || relation.title.romaji || relation.title.userPreferred || "Unknown Title";
+              <div>
+                <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                  <div className="w-1 h-6 bg-red-500 rounded"></div>
+                  You Might Also Like
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                  {animeData.recommendations.slice(0, 15).map((rec) => {
+                    const recTitle = rec.title.english || rec.title.romaji || rec.title.userPreferred || "Unknown Title";
                     return (
                       <div
-                        key={relation.id}
-                        onClick={() => window.location.href = `/details/${relation.id}`}
+                        key={rec.id}
+                        onClick={() => window.location.href = `/details/${rec.id}`}
                         className="group bg-black/60 backdrop-blur-sm border-2 border-red-500/20 rounded-xl overflow-hidden hover:border-red-500 hover:shadow-2xl hover:shadow-red-500/30 transition-all cursor-pointer transform hover:scale-105"
                       >
                         <div className="relative aspect-[2/3] overflow-hidden">
                           <img
-                            src={getWeservImage(relation.image, 400)}
-                            alt={relTitle}
+                            src={getWeservImage(rec.image, 400)}
+                            alt={recTitle}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                           />
-                          <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded uppercase">
-                            {relation.relationType}
-                          </div>
-                          {relation.rating && (
+                          {rec.rating && (
                             <div className="absolute top-2 right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
                               <StarIcon />
-                              {(relation.rating / 10).toFixed(1)}
+                              {(rec.rating / 10).toFixed(1)}
                             </div>
                           )}
-                        </div>
-                        <div className="p-3">
-                          <h4 className="text-white font-semibold text-sm line-clamp-2 mb-1">
-                            {relTitle}
-                          </h4>
-                          <p className="text-gray-400 text-xs">
-                            {relation.type} {relation.episodes && `• ${relation.episodes} eps`}
-                          </p>
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/80 to-transparent p-3">
+                            <h4 className="text-white font-semibold text-sm line-clamp-2 mb-1">
+                              {recTitle}
+                            </h4>
+                            <p className="text-gray-400 text-xs">{rec.type} • {rec.episodes || '?'} eps</p>
+                          </div>
                         </div>
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "relations" && animeData.relations && (
+              <div>
+                <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                  <div className="w-1 h-6 bg-red-500 rounded"></div>
+                  Related Anime
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                  {animeData.relations
+                    .filter((relation) => relation.type !== "MANGA" && relation.type !== "NOVEL" && relation.type !== "MUSIC")
+                    .map((relation) => {
+                      const relTitle = relation.title.english || relation.title.romaji || relation.title.userPreferred || "Unknown Title";
+                      return (
+                        <div
+                          key={relation.id}
+                          onClick={() => window.location.href = `/details/${relation.id}`}
+                          className="group bg-black/60 backdrop-blur-sm border-2 border-red-500/20 rounded-xl overflow-hidden hover:border-red-500 hover:shadow-2xl hover:shadow-red-500/30 transition-all cursor-pointer transform hover:scale-105"
+                        >
+                          <div className="relative aspect-[2/3] overflow-hidden">
+                            <img
+                              src={getWeservImage(relation.image, 400)}
+                              alt={relTitle}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            />
+                            <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded uppercase">
+                              {relation.relationType.replace(/_/g, ' ')}
+                            </div>
+                            {relation.rating && (
+                              <div className="absolute top-2 right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
+                                <StarIcon />
+                                {(relation.rating / 10).toFixed(1)}
+                              </div>
+                            )}
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/80 to-transparent p-3">
+                              <h4 className="text-white font-semibold text-sm line-clamp-2 mb-1">
+                                {relTitle}
+                              </h4>
+                              <p className="text-gray-400 text-xs">
+                                {relation.type} {relation.episodes && `• ${relation.episodes} eps`}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Footer Spacing */}
       <div className="h-12"></div>
     </div>
   );

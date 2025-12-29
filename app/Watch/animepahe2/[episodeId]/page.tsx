@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+import axios from "axios";
 
 interface VideoSource {
   url: string;
@@ -21,34 +22,49 @@ interface SourcesData {
 interface Episode {
   episodeNumber: number;
   episodeId: string;
-  title: string;
-  rating: string;
-  aired: boolean;
-  airDate: string;
-  overview: string;
+  title: string | null;
   thumbnail: string;
-  provider: string;
+}
+interface Server {
+  serverId: string;
+  serverName: string;
+  mediaId: string;
+}
+
+interface ServersData {
+  data: {
+    sub: Server[];
+    dub: Server[];
+  };
+}
+interface AnimeData {
+  anilistId: number;
+  malId: number;
+  id: string;
+  name: string;
+  romaji: string;
+  posterImage: string;
+  altnames: string;
+  japanese: string;
+  type: string;
+  status: string;
+  releaseDate: string;
+  studios: string;
+  synopsis: string;
+  score: number | null;
+  producers: string | null;
+  episodes: {
+    sub: number;
+    dub: number | null;
+  };
+  totalEpisodes: number;
+  duration: string;
+  genres: string[];
 }
 
 interface EpisodesResponse {
+  data: AnimeData;
   providerEpisodes: Episode[];
-  title?: {
-    romaji?: string;
-    english?: string;
-    native?: string;
-  };
-  data?: {
-    malId?: number;
-    anilistId?: number;
-    image?: string;
-    color?: string;
-    bannerImage?: string;
-    title?: {
-      romaji?: string;
-      english?: string;
-      native?: string;
-    };
-  };
 }
 
 const BackIcon = () => (
@@ -128,13 +144,15 @@ function AnimePahePlayer() {
   const [showEpisodesList, setShowEpisodesList] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [episodeRange, setEpisodeRange] = useState("all");
-  const [animeTitle, setAnimeTitle] = useState<{romaji?: string; english?: string; native?: string} | null>(null);
+  const [animeData, setAnimeData] = useState<AnimeData | null>(null);
   const [version, setVersion] = useState<'sub' | 'dub'>('sub');
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<{ destroy: () => void } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Video control states
+  const [serversData, setServersData] = useState<ServersData | null>(null);
+const [selectedServer, setSelectedServer] = useState<Server | null>(null);
+const [showServerMenu, setShowServerMenu] = useState(false);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -144,13 +162,12 @@ function AnimePahePlayer() {
   const [showControls, setShowControls] = useState(true);
   const [buffered, setBuffered] = useState(0);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Helper function to convert image URL to weserv proxy
+const [playerMode, setPlayerMode] = useState<'video' | 'iframe' | 'embed'>('video');
   const getWeservImage = (imageUrl: string, width?: number): string => {
     if (!imageUrl) return '';
     try {
       const encodedUrl = encodeURIComponent(imageUrl);
-      let weservUrl = `https://images.weserv.nl/?url=${encodedUrl}`;
+      let weservUrl = `https://animepahe-pi.vercel.app/api/proxy/image?url=${encodedUrl}`;
       if (width) {
         weservUrl += `&w=${width}&fit=cover`;
       }
@@ -176,89 +193,170 @@ function AnimePahePlayer() {
     setAnimeId(anId);
   }, []);
 
-  useEffect(() => {
-    async function fetchEpisodes() {
-      if (!animeId) return;
+useEffect(() => {
+  async function fetchEpisodes() {
+    if (!animeId) {
+      console.log("No animeId provided, skipping fetch");
+      return;
+    }
 
-      try {
-        setLoadingEpisodes(true);
-        const response = await fetch(
-          `https://kenjitsu.vercel.app/api/anilist/episodes/${animeId}?provider=animepahe`
-        );
+    try {
+      setLoadingEpisodes(true);
+      const apiUrl = `https://kenjitsu.vercel.app/api/animepahe/anime/${animeId}`;
+      console.log("Fetching episodes from:", apiUrl);
+      
+      const response = await axios.get<EpisodesResponse>(apiUrl);
+      
+      console.log("Response status:", response.status);
+      console.log("Received data:", response.data);
+      console.log("Provider episodes count:", response.data.providerEpisodes?.length || 0);
+      console.log("Anime data:", response.data.data);
+      
+      setEpisodes(response.data.providerEpisodes || []);
+      if (response.data.data) {
+        setAnimeData(response.data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching episodes:", err);
+      if (axios.isAxiosError(err)) {
+        console.error("Error details:", err.message);
+        console.error("Response data:", err.response?.data);
+      } else {
+        console.error("Error details:", err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      setLoadingEpisodes(false);
+    }
+  }
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+  fetchEpisodes();
+}, [animeId]);
+useEffect(() => {
+  const currentEp = episodes.find(ep => ep.episodeId === episodeId);
+  if (animeData && currentEp) {
+    const title = animeData.name || "Anime";
+    const pageTitle = `Episode ${currentEp.episodeNumber} - ${title}`;
+    const description =  `Watch ${title} Episode ${currentEp.episodeNumber}`;
 
-        const data: EpisodesResponse = await response.json();
-        
-        setEpisodes(data.providerEpisodes || []);
-        
-        let foundTitle = null;
-        
-        if (data.data && data.data.title) {
-          foundTitle = data.data.title;
-        } else if (data.title) {
-          foundTitle = data.title;
-        }
-        
-        if (foundTitle) {
-          setAnimeTitle(foundTitle);
-        }
-      } catch (err) {
-        console.error("Error fetching episodes:", err);
-      } finally {
-        setLoadingEpisodes(false);
+    // Update document title
+    document.title = pageTitle;
+
+    // Update or create meta description
+    let metaDescription = document.querySelector('meta[name="description"]');
+    if (!metaDescription) {
+      metaDescription = document.createElement('meta');
+      metaDescription.setAttribute('name', 'description');
+      document.head.appendChild(metaDescription);
+    }
+    metaDescription.setAttribute('content', description);
+
+    // Update or create Open Graph meta tags
+    const ogTitle = document.querySelector('meta[property="og:title"]') || document.createElement('meta');
+    ogTitle.setAttribute('property', 'og:title');
+    ogTitle.setAttribute('content', pageTitle);
+    if (!document.querySelector('meta[property="og:title"]')) {
+      document.head.appendChild(ogTitle);
+    }
+
+    const ogDescription = document.querySelector('meta[property="og:description"]') || document.createElement('meta');
+    ogDescription.setAttribute('property', 'og:description');
+    ogDescription.setAttribute('content', description);
+    if (!document.querySelector('meta[property="og:description"]')) {
+      document.head.appendChild(ogDescription);
+    }
+
+    // Add thumbnail as og:image if available
+    if (currentEp.thumbnail) {
+      const ogImage = document.querySelector('meta[property="og:image"]') || document.createElement('meta');
+      ogImage.setAttribute('property', 'og:image');
+      ogImage.setAttribute('content', currentEp.thumbnail);
+      if (!document.querySelector('meta[property="og:image"]')) {
+        document.head.appendChild(ogImage);
       }
     }
 
-    fetchEpisodes();
-  }, [animeId]);
+    // Twitter Card meta tags
+    const twitterCard = document.querySelector('meta[name="twitter:card"]') || document.createElement('meta');
+    twitterCard.setAttribute('name', 'twitter:card');
+    twitterCard.setAttribute('content', 'summary_large_image');
+    if (!document.querySelector('meta[name="twitter:card"]')) {
+      document.head.appendChild(twitterCard);
+    }
 
-  useEffect(() => {
-    async function fetchSources() {
-      if (!episodeId) return;
+    const twitterTitle = document.querySelector('meta[name="twitter:title"]') || document.createElement('meta');
+    twitterTitle.setAttribute('name', 'twitter:title');
+    twitterTitle.setAttribute('content', pageTitle);
+    if (!document.querySelector('meta[name="twitter:title"]')) {
+      document.head.appendChild(twitterTitle);
+    }
 
-      try {
-        setLoading(true);
-        setError(null);
+    const twitterDescription = document.querySelector('meta[name="twitter:description"]') || document.createElement('meta');
+    twitterDescription.setAttribute('name', 'twitter:description');
+    twitterDescription.setAttribute('content', description);
+    if (!document.querySelector('meta[name="twitter:description"]')) {
+      document.head.appendChild(twitterDescription);
+    }
 
-        const response = await fetch(
-          `https://kenjitsu.vercel.app/api/animepahe/sources/${episodeId}?version=${version}`
-        );
-
-        if (!response.ok) {
-          if (response.status === 500 && version === 'dub') {
-            setError(`Dub version is not available for this episode. Please switch to SUB.`);
-            setSourcesData(null);
-            return;
-          }
-          throw new Error(`HTTP error! status: ${response.status}`);
+    if (currentEp.thumbnail) {
+      const twitterImage = document.querySelector('meta[name="twitter:image"]') || document.createElement('meta');
+      twitterImage.setAttribute('name', 'twitter:image');
+      twitterImage.setAttribute('content', currentEp.thumbnail);
+      if (!document.querySelector('meta[name="twitter:image"]')) {
+        document.head.appendChild(twitterImage);
+      }
+    }
+  }
+}, [animeData, episodes, episodeId]);
+useEffect(() => {
+  async function fetchSources() {
+    if (!episodeId) return;
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch servers data
+      const serversResponse = await axios.get<ServersData>(
+        `https://kenjitsu.vercel.app/api/animepahe/episode/${episodeId}/servers`
+      );
+      setServersData(serversResponse.data);
+      
+      // Auto-select first server based on version
+      const servers = version === 'sub' ? serversResponse.data.data.sub : serversResponse.data.data.dub;
+      if (servers && servers.length > 0) {
+        // Find 1080p server or default to first
+        const preferred = servers.find(s => s.serverName.includes('1080p')) || servers[0];
+        setSelectedServer(preferred);
+      }
+      
+      // Fetch sources (existing code)
+      const { data } = await axios.get<SourcesData>(
+        `https://kenjitsu.vercel.app/api/animepahe/sources/${episodeId}?version=${version}`
+      );
+      setSourcesData(data);
+      if (data.data.sources && data.data.sources.length > 0) {
+        const qualities = data.data.sources.map((s: VideoSource) => s.quality);
+        if (qualities.includes('1080p')) {
+          setSelectedQuality('1080p');
+        } else if (qualities.includes('720p')) {
+          setSelectedQuality('720p');
+        } else {
+          setSelectedQuality(data.data.sources[0].quality);
         }
-
-        const data = await response.json();
-        setSourcesData(data);
-
-        if (data.data.sources && data.data.sources.length > 0) {
-          const qualities = data.data.sources.map((s: VideoSource) => s.quality);
-          if (qualities.includes('1080p')) {
-            setSelectedQuality('1080p');
-          } else if (qualities.includes('720p')) {
-            setSelectedQuality('720p');
-          } else {
-            setSelectedQuality(data.data.sources[0].quality);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching sources:", err);
+      }
+    } catch (err) {
+      console.error("Error fetching sources:", err);
+      if (axios.isAxiosError(err) && err.response?.status === 500 && version === 'dub') {
+        setError(`Dub version is not available for this episode. Please switch to SUB.`);
+        setSourcesData(null);
+      } else {
         setError(err instanceof Error ? err.message : "Failed to load video sources");
-      } finally {
-        setLoading(false);
       }
+    } finally {
+      setLoading(false);
     }
-
-    fetchSources();
-  }, [episodeId, version]);
+  }
+  fetchSources();
+}, [episodeId, version]);
 
   const selectedSource = sourcesData?.data.sources.find(
     (source) => source.quality === selectedQuality
@@ -395,34 +493,21 @@ function AnimePahePlayer() {
   
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if ([' ', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-        e.preventDefault();
-      }
-      
+      if (playerMode === 'iframe') return;
+      if ([' ', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
       switch(e.key) {
-        case ' ':
-          togglePlay();
-          break;
-        case 'ArrowLeft':
-          skip(-10);
-          break;
-        case 'ArrowRight':
-          skip(10);
-          break;
+        case ' ': togglePlay(); break;
+        case 'ArrowLeft': skip(-10); break;
+        case 'ArrowRight': skip(10); break;
         case 'f':
-        case 'F':
-          toggleFullscreen();
-          break;
+        case 'F': toggleFullscreen(); break;
         case 'm':
-        case 'M':
-          toggleMute();
-          break;
+        case 'M': toggleMute(); break;
       }
     };
-    
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isPlaying, isFullscreen, isMuted]);
+  }, [isPlaying, isFullscreen, isMuted, playerMode]);
   
   const togglePlay = () => {
     if (videoRef.current) {
@@ -489,6 +574,12 @@ function AnimePahePlayer() {
       }
     }
   };
+
+    const handleVideoTouch = (e: React.TouchEvent) => {
+      e.stopPropagation();
+      resetControlsTimeout();
+    };
+    
   
   const skip = (seconds: number) => {
     if (videoRef.current) {
@@ -525,21 +616,40 @@ function AnimePahePlayer() {
     }, 100);
   };
 
-  const handleVersionChange = (newVersion: 'sub' | 'dub') => {
-    const currentTime = videoRef.current?.currentTime || 0;
-    const wasPlaying = !videoRef.current?.paused;
-    
-    setVersion(newVersion);
+const handleVersionChange = (newVersion: 'sub' | 'dub') => {
+  const currentTime = videoRef.current?.currentTime || 0;
+  const wasPlaying = !videoRef.current?.paused;
+  setVersion(newVersion);
+  
+  // Auto-select first server for new version
+  if (serversData) {
+    const servers = newVersion === 'sub' ? serversData.data.sub : serversData.data.dub;
+    if (servers && servers.length > 0) {
+      const preferred = servers.find(s => s.serverName.includes('1080p')) || servers[0];
+      setSelectedServer(preferred);
+    }
+  }
+  
+  setTimeout(() => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = currentTime;
+      if (wasPlaying) videoRef.current.play().catch(e => console.log('Play failed:', e));
+    }
+  }, 100);
+};
 
-    setTimeout(() => {
-      if (videoRef.current) {
-        videoRef.current.currentTime = currentTime;
-        if (wasPlaying) {
-          videoRef.current.play().catch(e => console.log('Play failed:', e));
-        }
-      }
-    }, 100);
-  };
+const handleServerChange = (server: Server) => {
+  const currentTime = videoRef.current?.currentTime || 0;
+  const wasPlaying = !videoRef.current?.paused;
+  setSelectedServer(server);
+  setShowServerMenu(false);
+  setTimeout(() => {
+    if (videoRef.current && playerMode === 'video') {
+      videoRef.current.currentTime = currentTime;
+      if (wasPlaying) videoRef.current.play().catch(e => console.log('Play failed:', e));
+    }
+  }, 100);
+};
 
   const handleEpisodeChange = (newEpisodeId: string) => {
     const params = new URLSearchParams(window.location.search);
@@ -552,7 +662,7 @@ function AnimePahePlayer() {
 
   const filteredEpisodes = episodes.filter(episode => {
     const matchesSearch = searchQuery === "" || 
-      episode.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (episode.title && episode.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
       episode.episodeNumber.toString().includes(searchQuery);
     
     let matchesRange = true;
@@ -625,7 +735,42 @@ function AnimePahePlayer() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
       <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-3 sm:space-y-6">
-         <div 
+            <div className="flex justify-center">
+        <div className="inline-flex bg-gray-800/80 rounded-lg p-1 gap-1">
+  <button
+    onClick={() => setPlayerMode('video')}
+    className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+      playerMode === 'video'
+        ? 'bg-red-600 text-white shadow-lg'
+        : 'text-gray-400 hover:text-white'
+    }`}
+  >
+    Video Player
+  </button>
+  <button
+    onClick={() => setPlayerMode('iframe')}
+    className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+      playerMode === 'iframe'
+        ? 'bg-red-600 text-white shadow-lg'
+        : 'text-gray-400 hover:text-white'
+    }`}
+  >
+    Server Player
+  </button>
+  <button
+    onClick={() => setPlayerMode('embed')}
+    className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+      playerMode === 'embed'
+        ? 'bg-red-600 text-white shadow-lg'
+        : 'text-gray-400 hover:text-white'
+    }`}
+  >
+    Embed Player
+  </button>
+</div>
+        </div>
+          
+            <div 
           ref={containerRef}
           className={`relative w-full bg-black overflow-hidden shadow-2xl group ${
             isFullscreen ? 'h-screen' : 'rounded-xl sm:rounded-2xl'
@@ -633,7 +778,109 @@ function AnimePahePlayer() {
           onMouseMove={resetControlsTimeout}
           onMouseLeave={() => isPlaying && setShowControls(false)}
         >
-          {proxiedVideoUrl ? (
+   {playerMode === 'iframe' && selectedServer ? (
+  <div className="relative w-full">
+    <iframe
+      key={`${selectedServer.mediaId}-${version}`}
+      src={selectedServer.serverId}
+      className={`w-full bg-black ${
+        isFullscreen ? 'h-screen' : 'aspect-video'
+      }`}
+      allowFullScreen
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      style={{ border: 'none' }}
+    />
+    <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
+      <div className="flex items-center gap-1 bg-gray-900/90 backdrop-blur-sm rounded-lg p-1 shadow-xl border border-gray-700">
+        <button
+          onClick={() => handleVersionChange('sub')}
+          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+            version === 'sub'
+              ? 'bg-red-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+          }`}
+        >
+          SUB
+        </button>
+        <button
+          onClick={() => handleVersionChange('dub')}
+          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+            version === 'dub'
+              ? 'bg-red-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+          }`}
+        >
+          DUB
+        </button>
+      </div>
+      {serversData && (
+        <div className="relative">
+          <button
+            onClick={() => setShowServerMenu(!showServerMenu)}
+            className="w-full px-3 py-2 bg-gray-900/90 backdrop-blur-sm hover:bg-gray-800 rounded-lg text-xs font-semibold transition-all shadow-xl border border-gray-700 text-white text-left"
+          >
+            {selectedServer.serverName}
+          </button>
+          {showServerMenu && (
+            <div className="absolute top-full right-0 mt-2 bg-gray-900/95 backdrop-blur-lg rounded-lg overflow-hidden shadow-2xl border border-gray-700 min-w-[200px] max-h-[300px] overflow-y-auto z-50">
+              {(version === 'sub' ? serversData.data.sub : serversData.data.dub).map((server) => (
+                <button
+                  key={server.mediaId}
+                  onClick={() => handleServerChange(server)}
+                  className={`w-full px-4 py-3 text-left text-xs hover:bg-red-600 transition-colors ${
+                    selectedServer?.mediaId === server.mediaId
+                      ? 'bg-red-600 text-white font-bold'
+                      : 'text-gray-300'
+                  }`}
+                >
+                  {server.serverName}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  </div>
+) : playerMode === 'embed' && currentEpisode ? (
+  <div className="relative w-full">
+    <iframe
+      key={`${animeId}-${currentEpisode.episodeNumber}-${version}`}
+      src={`https://vidnest.fun/anime/${animeId}/${currentEpisode.episodeNumber}/${version}`}
+      className={`w-full bg-black ${
+        isFullscreen ? 'h-screen' : 'aspect-video'
+      }`}
+      allowFullScreen
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      style={{ border: 'none' }}
+    />
+    
+    <div className="absolute top-4 right-4 z-50">
+      <div className="flex items-center gap-1 bg-gray-900/90 backdrop-blur-sm rounded-lg p-1 shadow-xl border border-gray-700">
+        <button
+          onClick={() => handleVersionChange('sub')}
+          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+            version === 'sub'
+              ? 'bg-red-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+          }`}
+        >
+          SUB
+        </button>
+        <button
+          onClick={() => handleVersionChange('dub')}
+          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+            version === 'dub'
+              ? 'bg-red-600 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'
+          }`}
+        >
+          DUB
+        </button>
+      </div>
+    </div>
+  </div>
+) : proxiedVideoUrl ? (
             <>
               <video
                 ref={videoRef}
@@ -643,74 +890,78 @@ function AnimePahePlayer() {
                 style={{ objectFit: isFullscreen ? 'contain' : 'contain' }}
                 playsInline
                 onClick={togglePlay}
+                onTouchEnd={handleVideoTouch}
                 disablePictureInPicture
                 disableRemotePlayback
                 onContextMenu={(e) => e.preventDefault()}
               />
               <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity duration-300 pointer-events-none ${showControls ? 'opacity-100' : 'opacity-0'}`}>
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
-                  <button
-                    onClick={togglePlay}
-                    className="w-14 h-14 sm:w-20 sm:h-20 bg-red-600/90 hover:bg-red-500 rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-2xl"
-                  >
-                    {isPlaying ? <PauseIcon /> : <PlayIcon />}
-                  </button>
+                  <div className="flex items-center gap-4 sm:gap-6">
+                    <button
+                      onClick={() => skip(-10)}
+                      className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-800/90 hover:bg-gray-700 rounded-full flex items-center justify-center transition-all transform active:scale-95 shadow-xl touch-manipulation"
+                    >
+                      <Rewind10Icon />
+                    </button>
+                    <button
+                      onClick={togglePlay}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation();
+                        togglePlay();
+                      }}
+                      className="w-16 h-16 sm:w-20 sm:h-20 bg-red-600/90 hover:bg-red-500 rounded-full flex items-center justify-center transition-all transform active:scale-95 shadow-2xl touch-manipulation"
+                    >
+                      {isPlaying ? <PauseIcon /> : <PlayIcon />}
+                    </button>
+                    <button
+                      onClick={() => skip(10)}
+                      className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-800/90 hover:bg-gray-700 rounded-full flex items-center justify-center transition-all transform active:scale-95 shadow-xl touch-manipulation"
+                    >
+                      <Forward10Icon />
+                    </button>
+                  </div>
                 </div>
-                
-                <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 space-y-1 sm:space-y-2 pointer-events-auto">
-                  <div className="relative group/progress h-2 flex items-center">
-                    <div className="absolute inset-0 h-1 bg-gray-700 rounded-full overflow-hidden">
+                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 space-y-2 sm:space-y-2 pointer-events-auto">
+                  <div className="relative group/progress h-3 sm:h-2 flex items-center">
+                    <div className="absolute inset-0 h-2 sm:h-1 bg-gray-700 rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-gray-500 transition-all"
                         style={{ width: `${buffered}%` }}
                       />
                     </div>
-                    
-                    <div className="absolute inset-0 h-1 rounded-full overflow-hidden pointer-events-none">
+                    <div className="absolute inset-0 h-2 sm:h-1 rounded-full overflow-hidden pointer-events-none">
                       <div 
                         className="h-full bg-red-500 transition-all"
                         style={{ width: `${(currentTime / duration) * 100}%` }}
                       />
                     </div>
-                    
                     <input
                       type="range"
                       min="0"
                       max={duration || 0}
                       value={currentTime}
                       onChange={handleSeek}
-                      className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer z-10"
+                      className="absolute inset-0 w-full h-8 sm:h-2 opacity-0 cursor-pointer z-10 touch-manipulation"
                     />
-                    
                     <div 
-                      className="absolute w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded-full shadow-lg pointer-events-none transition-opacity opacity-0 group-hover/progress:opacity-100 z-20"
+                      className="absolute w-4 h-4 sm:w-3 sm:h-3 bg-red-500 rounded-full shadow-lg pointer-events-none transition-opacity opacity-0 group-hover/progress:opacity-100 z-20"
                       style={{ 
-                        left: `calc(${(currentTime / duration) * 100}% - 6px)`,
+                        left: `calc(${(currentTime / duration) * 100}% - 8px)`,
                         top: '50%',
                         transform: 'translateY(-50%)'
                       }}
                     />
                   </div>
-                  
-                  <div className="flex items-center justify-between text-white flex-wrap gap-2">
-                    <div className="flex items-center gap-1 sm:gap-3 flex-wrap">
-                      <button onClick={togglePlay} className="hover:text-red-400 transition-colors p-1 sm:p-2">
+                  <div className="flex items-center justify-between text-white gap-2">
+                    <div className="flex items-center gap-1 sm:gap-3">
+                      <button onClick={togglePlay} className="hover:text-red-400 transition-colors p-2 touch-manipulation">
                         {isPlaying ? <PauseIcon /> : <PlayIcon />}
                       </button>
-                      
-                      <button onClick={() => skip(-10)} className="hover:text-red-400 transition-colors p-1 sm:p-2" title="Rewind 10s">
-                        <Rewind10Icon />
-                      </button>
-                      
-                      <button onClick={() => skip(10)} className="hover:text-red-400 transition-colors p-1 sm:p-2" title="Forward 10s">
-                        <Forward10Icon />
-                      </button>
-                      
                       <div className="hidden sm:flex items-center gap-2 group/volume">
-                        <button onClick={toggleMute} className="hover:text-red-400 transition-colors p-2">
+                        <button onClick={toggleMute} className="hover:text-red-400 transition-colors p-2 touch-manipulation">
                           {isMuted || volume === 0 ? <VolumeMuteIcon /> : <VolumeIcon />}
                         </button>
-                        
                         <input
                           type="range"
                           min="0"
@@ -718,39 +969,31 @@ function AnimePahePlayer() {
                           step="0.01"
                           value={isMuted ? 0 : volume}
                           onChange={handleVolumeChange}
-                          className="w-0 group-hover/volume:w-20 transition-all duration-300 h-1 appearance-none bg-transparent cursor-pointer"
+                          className="w-0 group-hover/volume:w-20 transition-all duration-300 h-1 appearance-none bg-transparent cursor-pointer touch-manipulation"
                           style={{
                             background: `linear-gradient(to right, red 0%, red ${(isMuted ? 0 : volume) * 100}%, #4b5563 ${(isMuted ? 0 : volume) * 100}%, #4b5563 100%)`
                           }}
                         />
                       </div>
-                      
-                      <button onClick={toggleMute} className="sm:hidden hover:text-red-400 transition-colors p-1">
-                        {isMuted || volume === 0 ? <VolumeMuteIcon /> : <VolumeIcon />}
-                      </button>
-                      
-                      <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
+                      <span className="text-xs font-medium whitespace-nowrap">
                         {formatTime(currentTime)} / {formatTime(duration)}
                       </span>
                     </div>
-                    
-                    <div className="flex items-center gap-1 sm:gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
                       {sourcesData?.data.download && (
                         <a
                           href={sourcesData.data.download}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-1 sm:p-2 hover:text-green-400 transition-colors"
-                          title="Download Episode"
+                          className="p-2 hover:text-green-400 transition-colors touch-manipulation hidden sm:inline-flex"
                         >
                           <DownloadIcon />
                         </a>
                       )}
-                      
-                      <div className="flex items-center gap-1 bg-gray-800/80 rounded-lg p-1">
+                      <div className="flex items-center gap-0.5 sm:gap-1 bg-gray-800/80 rounded-lg p-0.5 sm:p-1">
                         <button
                           onClick={() => handleVersionChange('sub')}
-                          className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all ${
+                          className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs font-semibold transition-all touch-manipulation ${
                             version === 'sub'
                               ? 'bg-red-600 text-white shadow-lg'
                               : 'text-gray-400 hover:text-white'
@@ -760,7 +1003,7 @@ function AnimePahePlayer() {
                         </button>
                         <button
                           onClick={() => handleVersionChange('dub')}
-                          className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all ${
+                          className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs font-semibold transition-all touch-manipulation ${
                             version === 'dub'
                               ? 'bg-red-600 text-white shadow-lg'
                               : 'text-gray-400 hover:text-white'
@@ -769,21 +1012,20 @@ function AnimePahePlayer() {
                           DUB
                         </button>
                       </div>
-                      
                       <div className="relative">
                         <button
                           onClick={() => setShowQualityMenu(!showQualityMenu)}
-                          className="px-2 py-1 sm:px-3 sm:py-2 bg-gray-800/80 hover:bg-gray-700 rounded-lg text-xs sm:text-sm font-semibold transition-colors"
+                          className="px-2 py-1.5 sm:px-3 sm:py-2 bg-gray-800/80 hover:bg-gray-700 rounded-lg text-xs font-semibold transition-colors touch-manipulation min-w-[50px] sm:min-w-[60px]"
                         >
                           {selectedQuality}
                         </button>
                         {showQualityMenu && sourcesData && (
-                          <div className="absolute bottom-full right-0 mb-2 bg-gray-900/95 backdrop-blur-lg rounded-lg overflow-hidden shadow-2xl border border-gray-700 min-w-[80px] sm:min-w-[100px] z-50">
+                          <div className="absolute bottom-full right-0 mb-2 bg-gray-900/95 backdrop-blur-lg rounded-lg overflow-hidden shadow-2xl border border-gray-700 min-w-[80px] z-50">
                             {sourcesData.data.sources.map((source) => (
                               <button
                                 key={source.quality}
                                 onClick={() => handleQualityChange(source.quality)}
-                                className={`w-full px-3 py-2 text-left text-xs sm:text-sm hover:bg-red-600 transition-colors ${
+                                className={`w-full px-4 py-3 text-left text-xs hover:bg-red-600 transition-colors touch-manipulation ${
                                   selectedQuality === source.quality
                                     ? 'bg-red-600 text-white font-bold'
                                     : 'text-gray-300'
@@ -795,8 +1037,10 @@ function AnimePahePlayer() {
                           </div>
                         )}
                       </div>
-                      
-                      <button onClick={toggleFullscreen} className="hover:text-red-400 transition-colors p-1 sm:p-2">
+                      <button 
+                        onClick={toggleFullscreen} 
+                        className="hover:text-red-400 transition-colors p-2 touch-manipulation flex items-center justify-center"
+                      >
                         {isFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
                       </button>
                     </div>
@@ -843,7 +1087,7 @@ function AnimePahePlayer() {
                   <button
                     onClick={() => handleEpisodeChange(previousEpisode.episodeId)}
                     className="flex flex-row sm:flex-col items-center justify-center bg-black hover:bg-red-900/30 p-3 sm:p-4 rounded-xl transition-all transform hover:scale-105 border border-red-900/50 min-w-0 sm:min-w-[120px] gap-2 sm:gap-0"
-                    title={`Episode ${previousEpisode.episodeNumber}: ${previousEpisode.title}`}
+                    title={`Episode ${previousEpisode.episodeNumber}${previousEpisode.title ? `: ${previousEpisode.title}` : ''}`}
                   >
                     <svg className="w-6 h-6 sm:w-8 sm:h-8 sm:mb-2 text-red-500" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -867,38 +1111,43 @@ function AnimePahePlayer() {
                 {currentEpisode.thumbnail && (
                   <img
                     src={getWeservImage(currentEpisode.thumbnail)}
-                    alt={currentEpisode.title}
+                    alt={currentEpisode.title || `Episode ${currentEpisode.episodeNumber}`}
                     className="w-full sm:w-40 h-32 sm:h-24 object-cover rounded-xl shadow-lg border border-red-900/30"
                   />
                 )}
                 <div className="flex-1 space-y-1 sm:space-y-2">
-                  <div className="mb-1 sm:mb-2">
-                    {animeTitle ? (
-                      <button
-                        onClick={() => window.location.href = `/details/${animeId}`}
-                        className="text-left hover:text-red-400 transition-colors group w-full"
-                      >
-                        <h1 className="text-base sm:text-xl font-bold text-white group-hover:underline line-clamp-1">
-                          {animeTitle.english || animeTitle.romaji || animeTitle.native || "No Title"}
-                        </h1>
-                      </button>
-                    ) : (
-                      <div className="text-base sm:text-xl font-bold text-gray-500">
-                        Loading title...
-                      </div>
-                    )}
-                  </div>
+                 <div className="mb-1 sm:mb-2">
+  {animeData ? (
+    <button
+      onClick={() => window.location.href = `/details-animepahe/${animeId}`}
+      className="text-left hover:text-red-400 transition-colors group w-full cursor-pointer"
+    >
+      <h1 className="text-base sm:text-xl font-bold text-white line-clamp-1">
+        {(animeData.name || animeData.romaji || "No Title").replace(/^Bookmark\s+/i, '')}
+      </h1>
+    </button>
+  ) : (
+    <div className="text-base sm:text-xl font-bold text-gray-500">
+      Loading title...
+    </div>
+  )}
+</div>
                   
                   <h2 className="text-lg sm:text-2xl font-bold text-red-500">
                     Episode {currentEpisode.episodeNumber}
                   </h2>
-                  <p className="text-sm sm:text-lg text-white font-medium line-clamp-1">{currentEpisode.title}</p>
-                  {currentEpisode.overview && (
-                    <p className="text-gray-400 text-xs sm:text-sm line-clamp-2">{currentEpisode.overview}</p>
+                  {currentEpisode.title && (
+                    <p className="text-sm sm:text-lg text-white font-medium line-clamp-1">{currentEpisode.title}</p>
                   )}
-                  <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-400 pt-1">
-                    <span>Aired: {currentEpisode.airDate}</span>
-                  </div>
+                  {animeData && (
+                    <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-400 pt-1">
+                      <span>{animeData.type}</span>
+                      <span>•</span>
+                      <span>{animeData.status}</span>
+                                            <span>AniList ID: {animeData.anilistId}</span>
+
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -910,7 +1159,7 @@ function AnimePahePlayer() {
                   <button
                     onClick={() => handleEpisodeChange(nextEpisode.episodeId)}
                     className="flex flex-row sm:flex-col items-center justify-center bg-gradient-to-br from-red-600 to-red-900 hover:from-red-500 hover:to-red-800 p-3 sm:p-4 rounded-xl transition-all transform hover:scale-105 shadow-lg shadow-red-900/50 min-w-0 sm:min-w-[120px] gap-2 sm:gap-0"
-                    title={`Episode ${nextEpisode.episodeNumber}: ${nextEpisode.title}`}
+                    title={`Episode ${nextEpisode.episodeNumber}${nextEpisode.title ? `: ${nextEpisode.title}` : ''}`}
                   >
                     <div className="flex flex-col items-center order-2 sm:order-1">
                       <span className="text-xs mb-1 text-white">Next</span>
@@ -1008,12 +1257,14 @@ function AnimePahePlayer() {
                       {episode.thumbnail && (
                         <img
                           src={getWeservImage(episode.thumbnail, 200)}
-                          alt={episode.title}
+                          alt={episode.title || `Episode ${episode.episodeNumber}`}
                           className="w-full h-16 sm:h-24 object-cover rounded-md sm:rounded-lg"
                         />
                       )}
                       <div className="font-bold text-xs sm:text-sm">Episode {episode.episodeNumber}</div>
-                      <div className="text-[10px] sm:text-xs opacity-80 line-clamp-2">{episode.title}</div>
+                      {episode.title && (
+                        <div className="text-[10px] sm:text-xs opacity-80 line-clamp-2">{episode.title}</div>
+                      )}
                     </div>
                   </button>
                 ))}
