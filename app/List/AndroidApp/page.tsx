@@ -61,7 +61,7 @@ export default function AnimeStreamLanding() {
             Stream over 10,000+ anime episodes and movies. Watch your favorites anytime, anywhere.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <a href="https://expo.dev/artifacts/eas/2wZxzDQEXRUXrQjhXCcg4y.apk" className="group relative px-8 py-4 bg-gradient-to-r from-red-600 to-red-800 rounded-full font-bold text-lg hover:scale-105 transition-transform flex items-center space-x-2 shadow-2xl shadow-red-900/50">
+            <a href="https://expo.dev/artifacts/eas/eZ4953ECDVHQqWkmUF3R5Z.apk" className="group relative px-8 py-4 bg-gradient-to-r from-red-600 to-red-800 rounded-full font-bold text-lg hover:scale-105 transition-transform flex items-center space-x-2 shadow-2xl shadow-red-900/50">
               <Smartphone className="w-6 h-6" />
               <span>Download for Android</span>
               <div className="absolute inset-0 bg-white rounded-full opacity-0 group-hover:opacity-20 transition"></div>
