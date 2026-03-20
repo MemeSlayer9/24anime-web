@@ -161,7 +161,7 @@ function AnimePahePlayer() {
   };
 
   const getProxiedUrl = (originalUrl: string): string => {
-    const proxyBase = "https://hls.shrina.dev/proxy?url=";
+    const proxyBase = "https://epstein-nu.vercel.app/m3u8-proxy?url=";
     return proxyBase + encodeURIComponent(originalUrl);
   };
 

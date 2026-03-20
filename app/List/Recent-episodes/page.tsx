@@ -33,7 +33,7 @@ export default function AnimeEpisodesGrid() {
     const fetchEpisodes = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`https://kenjitsu.vercel.app/api/animepahe/episodes/recent?page=${currentPage}`);
+        const res = await fetch(`https://diddyepstein-delta.vercel.app/api/animepahe/episodes/recent?page=${currentPage}`);
         const data = await res.json();
         setEpisodes(data.data || []);
       } catch (err) {

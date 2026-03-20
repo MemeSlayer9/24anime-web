@@ -178,7 +178,7 @@ const [playerMode, setPlayerMode] = useState<'video' | 'iframe' | 'embed'>('vide
   };
 
   const getProxiedUrl = (originalUrl: string): string => {
-    const proxyBase = "https://hls.shrina.dev/proxy?url=";
+    const proxyBase = "https://epstein-nu.vercel.app/m3u8-proxy?url=";
     return proxyBase + encodeURIComponent(originalUrl);
   };
 
@@ -202,7 +202,7 @@ useEffect(() => {
 
     try {
       setLoadingEpisodes(true);
-      const apiUrl = `https://kenjitsu.vercel.app/api/animepahe/anime/${animeId}`;
+      const apiUrl = `https://diddyepstein-delta.vercel.app/api/animepahe/anime/${animeId}`;
       console.log("Fetching episodes from:", apiUrl);
       
       const response = await axios.get<EpisodesResponse>(apiUrl);
@@ -316,7 +316,7 @@ useEffect(() => {
       
       // Fetch servers data
       const serversResponse = await axios.get<ServersData>(
-        `https://kenjitsu.vercel.app/api/animepahe/episode/${episodeId}/servers`
+        `https://diddyepstein-delta.vercel.app/api/animepahe/episode/${episodeId}/servers`
       );
       setServersData(serversResponse.data);
       
@@ -330,19 +330,16 @@ useEffect(() => {
       
       // Fetch sources (existing code)
       const { data } = await axios.get<SourcesData>(
-        `https://kenjitsu.vercel.app/api/animepahe/sources/${episodeId}?version=${version}`
+        `https://diddyepstein-delta.vercel.app/api/animepahe/sources/${episodeId}?version=${version}`
       );
       setSourcesData(data);
-      if (data.data.sources && data.data.sources.length > 0) {
-        const qualities = data.data.sources.map((s: VideoSource) => s.quality);
-        if (qualities.includes('1080p')) {
-          setSelectedQuality('1080p');
-        } else if (qualities.includes('720p')) {
-          setSelectedQuality('720p');
-        } else {
-          setSelectedQuality(data.data.sources[0].quality);
-        }
-      }
+    if (data.data.sources && data.data.sources.length > 0) {
+  const qualities = data.data.sources.map((s: VideoSource) => s.quality);
+  const preferred = qualities.find(q => q.includes('1080p')) 
+    || qualities.find(q => q.includes('720p')) 
+    || qualities[0];
+  setSelectedQuality(preferred);
+}
     } catch (err) {
       console.error("Error fetching sources:", err);
       if (axios.isAxiosError(err) && err.response?.status === 500 && version === 'dub') {

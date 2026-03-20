@@ -6,7 +6,7 @@ import RecentAnimepahe from './RecentAnimepahe'
 import RecentHianime from './RecentHianime'
 
 export default function Home() {
-  const [showHianime, setShowHianime] = useState(true);
+  const [showHianime, setShowHianime] = useState(false); // Changed from true to false
 
   return (
     <div>

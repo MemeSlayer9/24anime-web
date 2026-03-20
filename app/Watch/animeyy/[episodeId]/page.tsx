@@ -137,7 +137,14 @@ const Rewind10Icon = () => (
 );
 
 // ── helpers ────────────────────────────────────────────────────────────────────
-function formatAirDate(dateStr: string): string {
+const formatAnimeTitle = (title: string): string =>
+  title
+    .replace(/-\d+$/, '')
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('-');
+
+const formatAirDate = (dateStr: string): string => {
   if (!dateStr) return '';
   try {
     return new Date(dateStr).toLocaleDateString('en-US', {
@@ -148,12 +155,11 @@ function formatAirDate(dateStr: string): string {
   } catch {
     return dateStr;
   }
-}
+};
 
 function AnimeKaiPlayer() {
   const [episodeId, setEpisodeId] = useState("");
   const [animeId, setAnimeId] = useState("");
-  // ── NEW: animeyyId extracted from URL params ──────────────────────────────
   const [animeyyId, setAnimeyyId] = useState("");
 
   const [sourcesData, setSourcesData] = useState<SourcesData | null>(null);
@@ -195,7 +201,6 @@ function AnimeKaiPlayer() {
     const epId = pathParts[pathParts.length - 1] || "";
     const params = new URLSearchParams(window.location.search);
     const anId = params.get('animeId') || "";
-    // ── NEW: read animeyyId from ?animeyyId=… ────────────────────────────────
     const ayyId = params.get('animeyyId') || "";
 
     setEpisodeId(decodeURIComponent(epId));
@@ -285,7 +290,8 @@ function AnimeKaiPlayer() {
           console.error("No episodes array found in response");
         }
 
-        if (data.title) setAnimeTitle(data.title);
+        // ── FIXED: format the title before setting state ──
+        if (data.title) setAnimeTitle(formatAnimeTitle(data.title));
       } catch (err) {
         console.error("Error fetching episodes:", err);
         setError(err instanceof Error ? err.message : "Failed to load episodes");
@@ -295,7 +301,6 @@ function AnimeKaiPlayer() {
     }
 
     fetchEpisodes();
-  // ── UPDATED dependency: also re-fetch when animeyyId changes ────────────
   }, [animeId, animeyyId]);
 
   // ── fetch video sources ────────────────────────────────────────────────────
@@ -904,46 +909,52 @@ function AnimeKaiPlayer() {
                 );
               })()}
 
-                {currentEpisode.thumbnail && (
-                  <img
-                    src={currentEpisode.thumbnail}
-                    alt={currentEpisode.title}
-                    className="w-full sm:w-40 h-32 sm:h-24 object-cover rounded-xl shadow-lg border border-red-900/30"
-                  />
-                )}
-         <div className="flex-1 space-y-1 sm:space-y-2">
-                  <div className="mb-1 sm:mb-2">
-                    {animeTitle ? (
-                      <button
-                        onClick={() => window.location.href = `/details/${animeId}`}
-                        className="text-left hover:text-red-400 transition-colors group w-full"
-                      >
-                        <h2 className="text-lg sm:text-xl font-bold group-hover:underline">
-                          {animeTitle}
-                        </h2>
-                      </button>
-                    ) : (
-                      <div className="text-gray-500 text-sm">
-                        Loading title...
-                      </div>
-                    )}
-                  </div>
+              {currentEpisode.thumbnail && (
+                <img
+                  src={currentEpisode.thumbnail}
+                  alt={currentEpisode.title}
+                  className="w-full sm:w-40 h-32 sm:h-24 object-cover rounded-xl shadow-lg border border-red-900/30"
+                />
+              )}
 
-                  <div className="space-y-1">
-                    <h3 className="text-xl sm:text-2xl font-bold text-red-400">
-                      Episode {currentEpisode.episodeNumber}
-                    </h3>
-                    <p className="text-base sm:text-lg text-gray-300">{currentEpisode.title}</p>
-                  </div>
-
-                  {currentEpisode.overview && (
-                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed">{currentEpisode.overview}</p>
+              <div className="flex-1 space-y-1 sm:space-y-2">
+                <div className="mb-1 sm:mb-2">
+                  {animeTitle ? (
+                    <button
+                      onClick={() => {
+                        const numericId = animeId.includes('/') ? animeId.split('/')[1] : animeId;
+                        window.location.href = `/details/${numericId}`;
+                      }}
+                      className="text-left hover:text-red-400 transition-colors group w-full"
+                    >
+                     <h2 className="text-lg sm:text-xl font-bold group-hover:underline">
+  {animeTitle
+    .replace(/-\d+$/, '')
+    .split('-')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('-')}
+</h2>
+                    </button>
+                  ) : (
+                    <div className="text-gray-500 text-sm">Loading title...</div>
                   )}
-
-                  <div className="text-xs sm:text-sm text-gray-500">
-                    Aired: {currentEpisode.airDate}
-                  </div>
                 </div>
+
+                <div className="space-y-1">
+                  <h3 className="text-xl sm:text-2xl font-bold text-red-400">
+                    Episode {currentEpisode.episodeNumber}
+                  </h3>
+                  <p className="text-base sm:text-lg text-gray-300">{currentEpisode.title}</p>
+                </div>
+
+                {currentEpisode.overview && (
+                  <p className="text-sm sm:text-base text-gray-400 leading-relaxed">{currentEpisode.overview}</p>
+                )}
+
+                <div className="text-xs sm:text-sm text-gray-500">
+                  Aired: {currentEpisode.airDate}
+                </div>
+              </div>
 
               {/* next */}
               {(() => {
@@ -1026,7 +1037,6 @@ function AnimeKaiPlayer() {
                     }`}
                   >
                     <div className="space-y-1.5">
-                      {/* ── THUMBNAIL ── */}
                       {episode.thumbnail ? (
                         <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-md">
                           <img
@@ -1035,24 +1045,20 @@ function AnimeKaiPlayer() {
                             className="w-full h-full object-cover"
                             loading="lazy"
                           />
-                          {/* episode number badge on thumbnail */}
                           <span className="absolute top-1 left-1 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
                             EP {episode.episode}
                           </span>
                         </div>
                       ) : (
-                        /* fallback if no thumbnail */
                         <div className="w-full aspect-video rounded-lg bg-gray-600/50 flex items-center justify-center">
                           <span className="text-xs font-bold text-gray-400">EP {episode.episode}</span>
                         </div>
                       )}
 
-                      {/* title */}
                       <div className="text-xs sm:text-sm font-semibold leading-tight line-clamp-2">
                         {episode.title || `Episode ${episode.episode}`}
                       </div>
 
-                      {/* ── AIR DATE ── */}
                       {episode.airDate && (
                         <div className={`text-[10px] sm:text-xs ${episode.episodeId === episodeId ? 'text-red-200' : 'text-gray-500'}`}>
                           {formatAirDate(episode.airDate)}

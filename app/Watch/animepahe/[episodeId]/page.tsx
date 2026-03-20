@@ -164,7 +164,7 @@ const [playerMode, setPlayerMode] = useState<'video' | 'iframe' | 'embed'>('vide
 const [selectedServer, setSelectedServer] = useState<Server | null>(null);
 const [showServerMenu, setShowServerMenu] = useState(false);
 
-  const getWeservImage = (imageUrl: string, width?: number): string => {
+   const getWeservImage = (imageUrl: string, width?: number): string => {
     if (!imageUrl) return '';
     try {
       const encodedUrl = encodeURIComponent(imageUrl);
@@ -179,7 +179,7 @@ const [showServerMenu, setShowServerMenu] = useState(false);
   };
 
   const getProxiedUrl = (originalUrl: string): string => {
-    const proxyBase = "https://hls.shrina.dev/proxy?url=";
+    const proxyBase = "https://epstein-nu.vercel.app/m3u8-proxy?url=";
     return proxyBase + encodeURIComponent(originalUrl);
   };
 
@@ -198,7 +198,7 @@ const [showServerMenu, setShowServerMenu] = useState(false);
       try {
         setLoadingEpisodes(true);
         const { data } = await axios.get<EpisodesResponse>(
-          `https://kenjitsu.vercel.app/api/anilist/episodes/${animeId}?provider=animepahe`
+          `https://diddyepstein-delta.vercel.app/api/anilist/episodes/${animeId}?provider=animepahe`
         );
         setEpisodes(data.providerEpisodes || []);
         const foundTitle = data.data?.title || data.title;
@@ -230,7 +230,7 @@ useEffect(() => {
       
       // Fetch servers data
       const serversResponse = await axios.get<ServersData>(
-        `https://kenjitsu.vercel.app/api/animepahe/episode/${episodeId}/servers`
+        `https://diddyepstein-delta.vercel.app/api/animepahe/episode/${episodeId}/servers`
       );
       setServersData(serversResponse.data);
       
@@ -244,19 +244,16 @@ useEffect(() => {
       
       // Fetch sources (existing code)
       const { data } = await axios.get<SourcesData>(
-        `https://kenjitsu.vercel.app/api/animepahe/sources/${episodeId}?version=${version}`
+        `https://diddyepstein-delta.vercel.app/api/animepahe/sources/${episodeId}?version=${version}`
       );
       setSourcesData(data);
-      if (data.data.sources && data.data.sources.length > 0) {
-        const qualities = data.data.sources.map((s: VideoSource) => s.quality);
-        if (qualities.includes('1080p')) {
-          setSelectedQuality('1080p');
-        } else if (qualities.includes('720p')) {
-          setSelectedQuality('720p');
-        } else {
-          setSelectedQuality(data.data.sources[0].quality);
-        }
-      }
+   if (data.data.sources && data.data.sources.length > 0) {
+  const qualities = data.data.sources.map((s: VideoSource) => s.quality);
+  const preferred = qualities.find(q => q.includes('1080p')) 
+    || qualities.find(q => q.includes('720p')) 
+    || qualities[0];
+  setSelectedQuality(preferred);
+}
     } catch (err) {
       console.error("Error fetching sources:", err);
       if (axios.isAxiosError(err) && err.response?.status === 500 && version === 'dub') {
@@ -961,10 +958,20 @@ const handleServerChange = (server: Server) => {
                 )}
                 <div className="flex-1 space-y-1 sm:space-y-2">
                   <div className="mb-1 sm:mb-2">
-                    {animeTitle && (
-                      <h1 className="text-base sm:text-xl font-bold text-white line-clamp-1">
-                        {animeTitle.english || animeTitle.romaji || animeTitle.native || "No Title"}
-                      </h1>
+                    
+                 {animeTitle ? (
+                      <button
+                        onClick={() => window.location.href = `/details/${animeId}`}
+                        className="text-left hover:text-red-400 transition-colors group w-full"
+                      >
+                        <h2 className="text-lg sm:text-xl font-bold group-hover:underline">
+                          {animeTitle.english || animeTitle.romaji || animeTitle.native || "No Title"}
+                        </h2>
+                      </button>
+                    ) : (
+                      <div className="text-gray-500 text-sm">
+                        Loading title...
+                      </div>
                     )}
                   </div>
                   <h2 className="text-lg sm:text-2xl font-bold text-red-500">

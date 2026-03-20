@@ -49,7 +49,7 @@ export default function AnimeEpisodesSlider() {
   }, []);
 
   useEffect(() => {
-    axios.get('https://kenjitsu.vercel.app/api/animepahe/episodes/recent')
+    axios.get('https://diddyepstein-delta.vercel.app/api/animepahe/episodes/recent')
       .then(response => {
         setEpisodes(response.data.data || []);
         setLoading(false);
