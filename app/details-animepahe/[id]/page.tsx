@@ -289,7 +289,7 @@ function AnimeDetailsPage() {
         setEpisodesError(null);
         
          const response = await axios.get(
-          `https://diddyepstein-delta.vercel.app/api/animepahe/anime/${animeId}`,
+          `https://dog-five-psi.vercel.app/api/animepahe/anime/${animeId}`,
           {
             params: { provider: "animepahe" }
           }

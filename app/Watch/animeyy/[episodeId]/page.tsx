@@ -275,7 +275,7 @@ function AnimeKaiPlayer() {
       try {
         setLoadingEpisodes(true);
         const response = await fetch(
-          `https://animeyy-api.vercel.app/api/info/${animeId}?all_pages=true`
+          `https://animeyy-api-kappa.vercel.app/api/info/${animeId}?all_pages=true`
         );
 
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -313,7 +313,7 @@ function AnimeKaiPlayer() {
         setError(null);
 
         const response = await fetch(
-          `https://animeyy-api.vercel.app/api/watch/${encodeURIComponent(episodeId)}`
+          `https://animeyy-api-kappa.vercel.app/api/watch/${encodeURIComponent(episodeId)}`
         );
 
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -345,7 +345,7 @@ function AnimeKaiPlayer() {
   }, [episodeId, version]);
 
   const videoUrl = m3u8Url
-    ? `https://animeyy-api.vercel.app/api/proxy-m3u8?url=${encodeURIComponent(m3u8Url)}`
+    ? `https://animeyy-api-kappa.vercel.app/api/proxy-m3u8?url=${encodeURIComponent(m3u8Url)}`
     : '';
 
   // ── subtitle track management ──────────────────────────────────────────────

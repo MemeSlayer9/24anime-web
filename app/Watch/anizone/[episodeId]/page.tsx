@@ -269,7 +269,7 @@ function AnimePahePlayer() {
       try {
         setLoadingEpisodes(true);
         const response = await fetch(
-          `https://diddyepstein-delta.vercel.app/api/anilist/episodes/${animeId}?provider=anizone`
+          `https://dream-chi-nine.vercel.app/api/anilist/episodes/${animeId}?provider=anizone`
         );
 
         if (!response.ok) {
@@ -315,7 +315,7 @@ function AnimePahePlayer() {
         setError(null);
 
         const response = await fetch(
-          `https://diddyepstein-delta.vercel.app/api/anizone/sources/${encodeURIComponent(episodeId)}?version=${version}&server=hd-2`
+          `https://dream-chi-nine.vercel.app/api/anizone/sources/${encodeURIComponent(episodeId)}?version=${version}&server=hd-2`
         );
 
         if (!response.ok) {

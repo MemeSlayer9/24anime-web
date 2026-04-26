@@ -43,16 +43,11 @@ interface Episode {
   overview: string;
   thumbnail: string;
   provider: string;
-  episode: string;
+  hasDub?: boolean;
+  hasSub?: boolean;
 }
 
 interface EpisodesResponse {
-  providerEpisodes: Episode[];
-  title?: {
-    romaji?: string;
-    english?: string;
-    native?: string;
-  };
   data?: {
     malId?: number;
     anilistId?: number;
@@ -65,6 +60,7 @@ interface EpisodesResponse {
       native?: string;
     };
   };
+  providerEpisodes: Episode[];
 }
 
 const BackIcon = () => (
@@ -150,11 +146,20 @@ function formatAirDate(dateStr: string): string {
   }
 }
 
+function upsertMeta(selector: string, attrKey: string, attrValue: string, content: string): void {
+  let el = document.querySelector<HTMLMetaElement>(selector);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attrKey, attrValue);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+
 function AnimeKaiPlayer() {
   const [episodeId, setEpisodeId] = useState("");
   const [animeId, setAnimeId] = useState("");
-  // ── NEW: animeyyId extracted from URL params ──────────────────────────────
-  const [animeyyId, setAnimeyyId] = useState("");
+  const [playerMode, setPlayerMode] = useState<'video' | 'embed'>('video');
 
   const [sourcesData, setSourcesData] = useState<SourcesData | null>(null);
   const [m3u8Url, setM3u8Url] = useState<string>('');
@@ -195,70 +200,28 @@ function AnimeKaiPlayer() {
     const epId = pathParts[pathParts.length - 1] || "";
     const params = new URLSearchParams(window.location.search);
     const anId = params.get('animeId') || "";
-    // ── NEW: read animeyyId from ?animeyyId=… ────────────────────────────────
-    const ayyId = params.get('animeyyId') || "";
-
     setEpisodeId(decodeURIComponent(epId));
     setAnimeId(anId);
-    setAnimeyyId(ayyId);
   }, []);
 
   // ── SEO meta tags ──────────────────────────────────────────────────────────
   useEffect(() => {
     const currentEp = episodes.find(ep => ep.episodeId === episodeId);
-    if (animeTitle && currentEp) {
-      const title = animeTitle || "Anime";
-      const pageTitle = `Episode ${currentEp.episode} - ${title}`;
-      const description = currentEp.overview || `Watch ${title} Episode ${currentEp.episode}`;
+    if (!animeTitle || !currentEp) return;
 
-      document.title = pageTitle;
+    const pageTitle = `Episode ${currentEp.episodeNumber} - ${animeTitle}`;
+    const description = currentEp.overview || `Watch ${animeTitle} Episode ${currentEp.episodeNumber}`;
 
-      let metaDescription = document.querySelector('meta[name="description"]');
-      if (!metaDescription) {
-        metaDescription = document.createElement('meta');
-        metaDescription.setAttribute('name', 'description');
-        document.head.appendChild(metaDescription);
-      }
-      metaDescription.setAttribute('content', description);
-
-      const ogTitle = document.querySelector('meta[property="og:title"]') || document.createElement('meta');
-      ogTitle.setAttribute('property', 'og:title');
-      ogTitle.setAttribute('content', pageTitle);
-      if (!document.querySelector('meta[property="og:title"]')) document.head.appendChild(ogTitle);
-
-      const ogDescription = document.querySelector('meta[property="og:description"]') || document.createElement('meta');
-      ogDescription.setAttribute('property', 'og:description');
-      ogDescription.setAttribute('content', description);
-      if (!document.querySelector('meta[property="og:description"]')) document.head.appendChild(ogDescription);
-
-      if (currentEp.thumbnail) {
-        const ogImage = document.querySelector('meta[property="og:image"]') || document.createElement('meta');
-        ogImage.setAttribute('property', 'og:image');
-        ogImage.setAttribute('content', currentEp.thumbnail);
-        if (!document.querySelector('meta[property="og:image"]')) document.head.appendChild(ogImage);
-      }
-
-      const twitterCard = document.querySelector('meta[name="twitter:card"]') || document.createElement('meta');
-      twitterCard.setAttribute('name', 'twitter:card');
-      twitterCard.setAttribute('content', 'summary_large_image');
-      if (!document.querySelector('meta[name="twitter:card"]')) document.head.appendChild(twitterCard);
-
-      const twitterTitle = document.querySelector('meta[name="twitter:title"]') || document.createElement('meta');
-      twitterTitle.setAttribute('name', 'twitter:title');
-      twitterTitle.setAttribute('content', pageTitle);
-      if (!document.querySelector('meta[name="twitter:title"]')) document.head.appendChild(twitterTitle);
-
-      const twitterDescription = document.querySelector('meta[name="twitter:description"]') || document.createElement('meta');
-      twitterDescription.setAttribute('name', 'twitter:description');
-      twitterDescription.setAttribute('content', description);
-      if (!document.querySelector('meta[name="twitter:description"]')) document.head.appendChild(twitterDescription);
-
-      if (currentEp.thumbnail) {
-        const twitterImage = document.querySelector('meta[name="twitter:image"]') || document.createElement('meta');
-        twitterImage.setAttribute('name', 'twitter:image');
-        twitterImage.setAttribute('content', currentEp.thumbnail);
-        if (!document.querySelector('meta[name="twitter:image"]')) document.head.appendChild(twitterImage);
-      }
+    document.title = pageTitle;
+    upsertMeta('meta[name="description"]',           'name',     'description',        description);
+    upsertMeta('meta[property="og:title"]',          'property', 'og:title',           pageTitle);
+    upsertMeta('meta[property="og:description"]',    'property', 'og:description',     description);
+    upsertMeta('meta[name="twitter:card"]',          'name',     'twitter:card',       'summary_large_image');
+    upsertMeta('meta[name="twitter:title"]',         'name',     'twitter:title',      pageTitle);
+    upsertMeta('meta[name="twitter:description"]',   'name',     'twitter:description', description);
+    if (currentEp.thumbnail) {
+      upsertMeta('meta[property="og:image"]',  'property', 'og:image',      currentEp.thumbnail);
+      upsertMeta('meta[name="twitter:image"]', 'name',     'twitter:image', currentEp.thumbnail);
     }
   }, [animeTitle, episodes, episodeId]);
 
@@ -266,26 +229,18 @@ function AnimeKaiPlayer() {
   useEffect(() => {
     async function fetchEpisodes() {
       if (!animeId) return;
-
       try {
         setLoadingEpisodes(true);
         const response = await fetch(
-          `https://animeyy-api.vercel.app/api/info/${animeId}?all_pages=true`
+          `https://dog-five-psi.vercel.app/api/anilist/episodes/${animeId}?provider=kaido`
         );
-
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-        const data = await response.json();
-        console.log("Full API Response:", data);
-
-        if (data.episodes && Array.isArray(data.episodes)) {
-          console.log("First episode:", data.episodes[0]);
-          setEpisodes([...data.episodes].reverse());
-        } else {
-          console.error("No episodes array found in response");
+        const json: EpisodesResponse = await response.json();
+        if (json.providerEpisodes && Array.isArray(json.providerEpisodes)) {
+          setEpisodes(json.providerEpisodes);
         }
-
-        if (data.title) setAnimeTitle(data.title);
+        const t = json.data?.title;
+        if (t) setAnimeTitle(t.english || t.romaji || t.native || '');
       } catch (err) {
         console.error("Error fetching episodes:", err);
         setError(err instanceof Error ? err.message : "Failed to load episodes");
@@ -293,38 +248,37 @@ function AnimeKaiPlayer() {
         setLoadingEpisodes(false);
       }
     }
-
     fetchEpisodes();
-  // ── UPDATED dependency: also re-fetch when animeyyId changes ────────────
-  }, [animeId, animeyyId]);
+  }, [animeId]);
 
   // ── fetch video sources ────────────────────────────────────────────────────
   useEffect(() => {
     async function fetchSources() {
       if (!episodeId) return;
-
       try {
         setLoading(true);
         setError(null);
+        setSubtitles([]);
+        setSelectedSubtitle('');
 
         const response = await fetch(
-          `https://animeyy-api.vercel.app/api/watch/${encodeURIComponent(episodeId)}`
+          `https://dog-five-psi.vercel.app/api/kaido/sources/${encodeURIComponent(episodeId)}?version=${version}`
         );
-
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
         const data = await response.json();
 
-        if (data.m3u8Url) {
-          setM3u8Url(data.m3u8Url);
+        const sourceUrl = data?.data?.sources?.[0]?.url;
+        if (sourceUrl) {
+          setM3u8Url(sourceUrl);
         } else {
-          throw new Error("No m3u8Url found in response");
+          throw new Error("No source URL found in response");
         }
 
-        if (data.subtitles && data.subtitles.length > 0) {
-          const validSubtitles = data.subtitles.filter((sub: Subtitle) => sub.lang !== 'thumbnails');
+        if (data?.data?.subtitles && data.data.subtitles.length > 0) {
+          const validSubtitles = data.data.subtitles.filter(
+            (sub: Subtitle) => sub.lang !== 'thumbnails'
+          );
           setSubtitles(validSubtitles);
-
           const defaultSub = validSubtitles.find((sub: Subtitle) => sub.default);
           setSelectedSubtitle(defaultSub ? defaultSub.lang : validSubtitles[0]?.lang ?? '');
         }
@@ -335,80 +289,51 @@ function AnimeKaiPlayer() {
         setLoading(false);
       }
     }
-
     fetchSources();
   }, [episodeId, version]);
 
-  const videoUrl = m3u8Url
-    ? `https://animeyy-api.vercel.app/api/proxy-m3u8?url=${encodeURIComponent(m3u8Url)}`
-    : '';
+  // ── auto-revert to SUB when current episode has no dub ────────────────────
+  const currentEpisode = episodes.find(ep => ep.episodeId === episodeId);
 
-  // ── subtitle track management ──────────────────────────────────────────────
   useEffect(() => {
-    if (!videoRef.current) return;
-
-    const video = videoRef.current;
-    video.querySelectorAll('track').forEach(t => t.remove());
-    if (subtitles.length === 0) return;
-
-    const defaultSubtitle = subtitles.find(s => s.default)?.lang || subtitles[0]?.lang;
-    if (!selectedSubtitle && defaultSubtitle) setSelectedSubtitle(defaultSubtitle);
-    const targetSubtitle = selectedSubtitle || defaultSubtitle;
-
-    const activateSubtitle = () => {
-      if (!video.textTracks || video.textTracks.length === 0) return;
-      const tracks = Array.from(video.textTracks);
-      const targetLang = targetSubtitle?.toLowerCase().replace(/\s+/g, '-');
-      tracks.forEach(t => { t.mode = 'disabled'; });
-      let activated = false;
-      tracks.forEach(t => {
-        if (t.language === targetLang || t.label === targetSubtitle) {
-          t.mode = 'showing';
-          activated = true;
-        }
-      });
-      if (!activated && tracks.length > 0) tracks[0].mode = 'showing';
-      if ('ontouchstart' in window) {
-        requestAnimationFrame(() => {
-          tracks.forEach(t => {
-            if (t.language === targetLang || t.label === targetSubtitle) t.mode = 'showing';
-          });
-        });
-      }
-    };
-
-    activateSubtitle();
-    const timeouts = [50, 100, 200, 500, 1000, 2000, 3000].map(d => setTimeout(activateSubtitle, d));
-    const trackElements = video.querySelectorAll('track');
-    const trackLoadHandler = () => {
-      activateSubtitle();
-      if ('ontouchstart' in window) setTimeout(activateSubtitle, 100);
-    };
-    trackElements.forEach(el => el.addEventListener('load', trackLoadHandler));
-    video.addEventListener('loadedmetadata', activateSubtitle);
-    video.addEventListener('loadeddata', activateSubtitle);
-    video.addEventListener('canplay', activateSubtitle);
-    video.addEventListener('play', activateSubtitle);
-    video.addEventListener('playing', activateSubtitle);
-    if ('ontouchstart' in window) {
-      video.addEventListener('touchstart', activateSubtitle, { once: true });
-      video.addEventListener('click', activateSubtitle, { once: true });
+    if (currentEpisode?.hasDub === false && version === 'dub') {
+      setVersion('sub');
     }
+  }, [currentEpisode]);
+
+  const videoUrl = m3u8Url || '';
+
+  // ── subtitle track mode management ────────────────────────────────────────
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || subtitles.length === 0) return;
+
+    const applyMode = () => {
+      Array.from(video.textTracks).forEach((track) => {
+        const matches =
+          selectedSubtitle !== '' &&
+          (track.label === selectedSubtitle ||
+            track.language === selectedSubtitle.toLowerCase().replace(/\s+/g, '-'));
+        track.mode = matches ? 'showing' : 'disabled';
+      });
+    };
+
+    const delays = [0, 100, 300, 600, 1200, 2500].map((ms) => setTimeout(applyMode, ms));
+    video.addEventListener('loadedmetadata', applyMode);
+    video.addEventListener('canplay', applyMode);
+    video.addEventListener('play', applyMode);
 
     return () => {
-      timeouts.forEach(clearTimeout);
-      trackElements.forEach(el => el.removeEventListener('load', trackLoadHandler));
-      video.removeEventListener('loadedmetadata', activateSubtitle);
-      video.removeEventListener('loadeddata', activateSubtitle);
-      video.removeEventListener('canplay', activateSubtitle);
-      video.removeEventListener('play', activateSubtitle);
-      video.removeEventListener('playing', activateSubtitle);
+      delays.forEach(clearTimeout);
+      video.removeEventListener('loadedmetadata', applyMode);
+      video.removeEventListener('canplay', applyMode);
+      video.removeEventListener('play', applyMode);
     };
   }, [subtitles, selectedSubtitle, videoUrl]);
 
   // ── HLS / video setup ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (!videoUrl || !videoRef.current) return;
+    if (!videoUrl || !videoRef.current || playerMode !== 'video') return;
 
     const video = videoRef.current;
     setVideoLoading(true);
@@ -518,7 +443,7 @@ function AnimeKaiPlayer() {
       video.removeEventListener('loadstart', handleLoadStart);
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
-  }, [videoUrl]);
+  }, [videoUrl, playerMode]);
 
   useEffect(() => {
     const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -616,6 +541,10 @@ function AnimeKaiPlayer() {
   };
 
   const handleVersionChange = (newVersion: 'sub' | 'dub') => {
+    if (playerMode === 'embed') {
+      setVersion(newVersion);
+      return;
+    }
     const ct = videoRef.current?.currentTime || 0;
     const wasPlaying = !videoRef.current?.paused;
     setVersion(newVersion);
@@ -670,10 +599,6 @@ function AnimeKaiPlayer() {
   const handleSubtitleChange = (lang: string) => {
     setSelectedSubtitle(lang);
     setShowSubtitleMenu(false);
-    if (!videoRef.current) return;
-    Array.from(videoRef.current.textTracks).forEach(track => {
-      track.mode = lang && track.language === lang.toLowerCase().replace(/\s/g, '-') ? 'showing' : 'hidden';
-    });
   };
 
   const handleEpisodeChange = (newEpisodeId: string) => {
@@ -683,16 +608,14 @@ function AnimeKaiPlayer() {
     setEpisodeId(newEpisodeId);
   };
 
-  const currentEpisode = episodes.find(ep => ep.episodeId === episodeId);
-
   const filteredEpisodes = episodes.filter(episode => {
     const matchesSearch = searchQuery === "" ||
-      episode.episode.includes(searchQuery) ||
+      episode.episodeNumber.toString().includes(searchQuery) ||
       episode.episodeId.toLowerCase().includes(searchQuery.toLowerCase());
     let matchesRange = true;
     if (episodeRange !== "all") {
       const [start, end] = episodeRange.split("-").map(Number);
-      const num = parseInt(episode.episode);
+      const num = episode.episodeNumber;
       matchesRange = num >= start && num <= end;
     }
     return matchesSearch && matchesRange;
@@ -747,12 +670,70 @@ function AnimeKaiPlayer() {
     );
   }
 
+  // ── derived: does the current episode support dub? ─────────────────────────
+  const dubAvailable = currentEpisode?.hasDub !== false;
+
   // ── main render ────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
       <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-3 sm:space-y-6">
 
-        {/* ── video player ── */}
+        {/* ── top toolbar: player mode + SUB/DUB (always visible) ── */}
+        <div className="flex flex-wrap justify-center items-center gap-3">
+
+          {/* Player mode toggle */}
+          <div className="inline-flex bg-gray-800/80 rounded-lg p-1 gap-1 shadow-xl border border-gray-700">
+            <button
+              onClick={() => setPlayerMode('video')}
+              className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                playerMode === 'video'
+                  ? 'bg-red-600 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              Video Player
+            </button>
+            <button
+              onClick={() => setPlayerMode('embed')}
+              className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                playerMode === 'embed'
+                  ? 'bg-red-600 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              Embed Player
+            </button>
+          </div>
+
+          {/* SUB / DUB — DUB only shown when hasDub is not false */}
+          <div className="inline-flex bg-gray-800/80 rounded-lg p-1 gap-1 shadow-xl border border-gray-700">
+            <button
+              onClick={() => handleVersionChange('sub')}
+              className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                version === 'sub'
+                  ? 'bg-red-600 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              SUB
+            </button>
+            {dubAvailable && (
+              <button
+                onClick={() => handleVersionChange('dub')}
+                className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                  version === 'dub'
+                    ? 'bg-red-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                }`}
+              >
+                DUB
+              </button>
+            )}
+          </div>
+
+        </div>
+
+        {/* ── player container ── */}
         <div
           ref={containerRef}
           className={`relative w-full bg-black overflow-hidden shadow-2xl group ${
@@ -761,7 +742,16 @@ function AnimeKaiPlayer() {
           onMouseMove={resetControlsTimeout}
           onTouchStart={handleVideoTouch}
         >
-          {videoUrl ? (
+          {playerMode === 'embed' && currentEpisode ? (
+            <iframe
+              key={`${animeId}-${currentEpisode.episodeNumber}-${version}`}
+              src={`https://megaplay.buzz/stream/ani/${animeId}/${currentEpisode.episodeNumber}/${version}`}
+              className={`w-full bg-black ${isFullscreen ? 'h-screen' : 'aspect-video'}`}
+              allowFullScreen
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              style={{ border: 'none' }}
+            />
+          ) : videoUrl ? (
             <>
               <video
                 ref={videoRef}
@@ -769,7 +759,18 @@ function AnimeKaiPlayer() {
                 onClick={togglePlay}
                 onContextMenu={(e) => e.preventDefault()}
                 crossOrigin="anonymous"
-              />
+              >
+                {subtitles.map((sub) => (
+                  <track
+                    key={sub.lang}
+                    kind="subtitles"
+                    src={sub.url}
+                    srcLang={sub.lang.toLowerCase().replace(/\s+/g, '-')}
+                    label={sub.lang}
+                    default={sub.default === true && selectedSubtitle === sub.lang}
+                  />
+                ))}
+              </video>
 
               {videoLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50">
@@ -844,20 +845,53 @@ function AnimeKaiPlayer() {
                         </a>
                       )}
 
+                      {/* SUB/DUB inside video controls — DUB hidden when unavailable */}
                       <div className="flex items-center gap-1 bg-gray-800/80 rounded-lg p-1">
-                        <button onClick={() => handleVersionChange('sub')} className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs font-semibold transition-all touch-manipulation ${version === 'sub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}>SUB</button>
-                        <button onClick={() => handleVersionChange('dub')} className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs font-semibold transition-all touch-manipulation ${version === 'dub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}>DUB</button>
+                        <button
+                          onClick={() => handleVersionChange('sub')}
+                          className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs font-semibold transition-all touch-manipulation ${version === 'sub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                        >
+                          SUB
+                        </button>
+                        {dubAvailable && (
+                          <button
+                            onClick={() => handleVersionChange('dub')}
+                            className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs font-semibold transition-all touch-manipulation ${version === 'dub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                          >
+                            DUB
+                          </button>
+                        )}
                       </div>
 
                       <div className="relative">
-                        <button onClick={() => setShowSubtitleMenu(!showSubtitleMenu)} className="px-2 py-1 sm:px-3 sm:py-1.5 bg-gray-800/80 hover:bg-gray-700 rounded-lg text-xs font-semibold transition-all touch-manipulation flex items-center gap-1" title="Subtitles">
+                        <button
+                          onClick={() => setShowSubtitleMenu(!showSubtitleMenu)}
+                          className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold transition-all touch-manipulation flex items-center gap-1 ${
+                            selectedSubtitle
+                              ? 'bg-red-600 hover:bg-red-700 text-white'
+                              : 'bg-gray-800/80 hover:bg-gray-700 text-white'
+                          }`}
+                          title="Subtitles"
+                        >
                           <SubtitleIcon />
+                          {selectedSubtitle && (
+                            <span className="hidden sm:inline text-xs">{selectedSubtitle}</span>
+                          )}
                         </button>
                         {showSubtitleMenu && (
                           <div className="absolute bottom-full right-0 mb-2 bg-gray-800 rounded-lg shadow-2xl overflow-hidden min-w-[150px] max-h-[300px] overflow-y-auto z-50">
-                            <button onClick={() => handleSubtitleChange('')} className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-700 transition-colors ${selectedSubtitle === '' ? 'bg-red-600 text-white' : 'text-gray-300'}`}>Off</button>
+                            <button
+                              onClick={() => handleSubtitleChange('')}
+                              className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-700 transition-colors ${selectedSubtitle === '' ? 'bg-red-600 text-white' : 'text-gray-300'}`}
+                            >
+                              Off
+                            </button>
                             {subtitles.map(sub => (
-                              <button key={sub.lang} onClick={() => handleSubtitleChange(sub.lang)} className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-700 transition-colors ${selectedSubtitle === sub.lang ? 'bg-red-600 text-white' : 'text-gray-300'}`}>
+                              <button
+                                key={sub.lang}
+                                onClick={() => handleSubtitleChange(sub.lang)}
+                                className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-700 transition-colors ${selectedSubtitle === sub.lang ? 'bg-red-600 text-white' : 'text-gray-300'}`}
+                              >
                                 {sub.lang}
                               </button>
                             ))}
@@ -887,7 +921,6 @@ function AnimeKaiPlayer() {
         {currentEpisode && (
           <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-4 sm:p-6 shadow-2xl border border-gray-700 mb-6">
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-              {/* previous */}
               {(() => {
                 const idx = episodes.findIndex(ep => ep.episodeId === episodeId);
                 const prev = idx > 0 ? episodes[idx - 1] : null;
@@ -896,7 +929,7 @@ function AnimeKaiPlayer() {
                     <BackIcon />
                     <div className="text-center ml-2">
                       <div className="text-xs text-gray-400">Previous</div>
-                      <div className="font-bold">EP {prev.episode}</div>
+                      <div className="font-bold">EP {prev.episodeNumber}</div>
                     </div>
                   </button>
                 ) : (
@@ -904,48 +937,34 @@ function AnimeKaiPlayer() {
                 );
               })()}
 
-                {currentEpisode.thumbnail && (
-                  <img
-                    src={currentEpisode.thumbnail}
-                    alt={currentEpisode.title}
-                    className="w-full sm:w-40 h-32 sm:h-24 object-cover rounded-xl shadow-lg border border-red-900/30"
-                  />
-                )}
-         <div className="flex-1 space-y-1 sm:space-y-2">
-                  <div className="mb-1 sm:mb-2">
-                    {animeTitle ? (
-                      <button
-                        onClick={() => window.location.href = `/details/${animeId}`}
-                        className="text-left hover:text-red-400 transition-colors group w-full"
-                      >
-                        <h2 className="text-lg sm:text-xl font-bold group-hover:underline">
-                          {animeTitle}
-                        </h2>
-                      </button>
-                    ) : (
-                      <div className="text-gray-500 text-sm">
-                        Loading title...
-                      </div>
-                    )}
-                  </div>
+              {currentEpisode.thumbnail && (
+                <img
+                  src={currentEpisode.thumbnail}
+                  alt={currentEpisode.title}
+                  className="w-full sm:w-40 h-32 sm:h-24 object-cover rounded-xl shadow-lg border border-red-900/30"
+                />
+              )}
 
-                  <div className="space-y-1">
-                    <h3 className="text-xl sm:text-2xl font-bold text-red-400">
-                      Episode {currentEpisode.episodeNumber}
-                    </h3>
-                    <p className="text-base sm:text-lg text-gray-300">{currentEpisode.title}</p>
-                  </div>
-
-                  {currentEpisode.overview && (
-                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed">{currentEpisode.overview}</p>
+              <div className="flex-1 space-y-1 sm:space-y-2">
+                <div className="mb-1 sm:mb-2">
+                  {animeTitle ? (
+                    <button
+                      onClick={() => window.location.href = `/details/${animeId}`}
+                      className="text-left hover:text-red-400 transition-colors group w-full"
+                    >
+                      <h2 className="text-lg sm:text-xl font-bold group-hover:underline">{animeTitle}</h2>
+                    </button>
+                  ) : (
+                    <div className="text-gray-500 text-sm">Loading title...</div>
                   )}
-
-                  <div className="text-xs sm:text-sm text-gray-500">
-                    Aired: {currentEpisode.airDate}
-                  </div>
                 </div>
+                <div className="space-y-1">
+                  <h3 className="text-xl sm:text-2xl font-bold text-red-400">Episode {currentEpisode.episodeNumber}</h3>
+                  <p className="text-base sm:text-lg text-gray-300">{currentEpisode.title}</p>
+                </div>
+                <div className="text-xs sm:text-sm text-gray-500">Aired: {formatAirDate(currentEpisode.airDate)}</div>
+              </div>
 
-              {/* next */}
               {(() => {
                 const idx = episodes.findIndex(ep => ep.episodeId === episodeId);
                 const next = idx < episodes.length - 1 ? episodes[idx + 1] : null;
@@ -953,7 +972,7 @@ function AnimeKaiPlayer() {
                   <button onClick={() => handleEpisodeChange(next.episodeId)} className="flex items-center justify-center bg-gradient-to-br from-red-600 to-red-900 hover:from-red-500 hover:to-red-800 p-3 sm:p-4 rounded-xl transition-all transform hover:scale-105 shadow-lg min-w-[100px]">
                     <div className="text-center mr-2">
                       <div className="text-xs text-red-200">Next</div>
-                      <div className="font-bold">EP {next.episode}</div>
+                      <div className="font-bold">EP {next.episodeNumber}</div>
                     </div>
                     <svg className="w-5 h-5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -980,7 +999,6 @@ function AnimeKaiPlayer() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="px-3 sm:px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent w-full sm:w-48 text-sm"
               />
-
               <select
                 value={episodeRange}
                 onChange={(e) => setEpisodeRange(e.target.value)}
@@ -991,12 +1009,11 @@ function AnimeKaiPlayer() {
                   const ranges = [];
                   for (let i = 1; i <= episodes.length; i += 25) {
                     const end = Math.min(i + 24, episodes.length);
-                    ranges.push(<option key={`${i}-${end}`} value={`${i}-${end}`}>Episodes {i}-{end}</option>);
+                    ranges.push(<option key={`${i}-${end}`} value={`${i}-${end}`}>Episodes {i}–{end}</option>);
                   }
                   return ranges;
                 })()}
               </select>
-
               <div className="text-sm text-gray-400 self-center">
                 {filteredEpisodes.length} / {episodes.length} episodes
               </div>
@@ -1026,33 +1043,26 @@ function AnimeKaiPlayer() {
                     }`}
                   >
                     <div className="space-y-1.5">
-                      {/* ── THUMBNAIL ── */}
                       {episode.thumbnail ? (
                         <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-md">
                           <img
                             src={episode.thumbnail}
-                            alt={`Episode ${episode.episode}`}
+                            alt={`Episode ${episode.episodeNumber}`}
                             className="w-full h-full object-cover"
                             loading="lazy"
                           />
-                          {/* episode number badge on thumbnail */}
                           <span className="absolute top-1 left-1 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                            EP {episode.episode}
+                            EP {episode.episodeNumber}
                           </span>
                         </div>
                       ) : (
-                        /* fallback if no thumbnail */
                         <div className="w-full aspect-video rounded-lg bg-gray-600/50 flex items-center justify-center">
-                          <span className="text-xs font-bold text-gray-400">EP {episode.episode}</span>
+                          <span className="text-xs font-bold text-gray-400">EP {episode.episodeNumber}</span>
                         </div>
                       )}
-
-                      {/* title */}
                       <div className="text-xs sm:text-sm font-semibold leading-tight line-clamp-2">
-                        {episode.title || `Episode ${episode.episode}`}
+                        {episode.title || `Episode ${episode.episodeNumber}`}
                       </div>
-
-                      {/* ── AIR DATE ── */}
                       {episode.airDate && (
                         <div className={`text-[10px] sm:text-xs ${episode.episodeId === episodeId ? 'text-red-200' : 'text-gray-500'}`}>
                           {formatAirDate(episode.airDate)}

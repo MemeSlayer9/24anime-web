@@ -198,7 +198,7 @@ const [showServerMenu, setShowServerMenu] = useState(false);
       try {
         setLoadingEpisodes(true);
         const { data } = await axios.get<EpisodesResponse>(
-          `https://diddyepstein-delta.vercel.app/api/anilist/episodes/${animeId}?provider=animepahe`
+          `https://dream-chi-nine.vercel.app/api/anilist/episodes/${animeId}?provider=animepahe`
         );
         setEpisodes(data.providerEpisodes || []);
         const foundTitle = data.data?.title || data.title;
@@ -230,7 +230,7 @@ useEffect(() => {
       
       // Fetch servers data
       const serversResponse = await axios.get<ServersData>(
-        `https://diddyepstein-delta.vercel.app/api/animepahe/episode/${episodeId}/servers`
+        `https://dog-five-psi.vercel.app/api/animepahe/episode/${episodeId}/servers`
       );
       setServersData(serversResponse.data);
       
@@ -244,7 +244,7 @@ useEffect(() => {
       
       // Fetch sources (existing code)
       const { data } = await axios.get<SourcesData>(
-        `https://diddyepstein-delta.vercel.app/api/animepahe/sources/${episodeId}?version=${version}`
+        `https://dog-five-psi.vercel.app/api/animepahe/sources/${episodeId}?version=${version}`
       );
       setSourcesData(data);
    if (data.data.sources && data.data.sources.length > 0) {

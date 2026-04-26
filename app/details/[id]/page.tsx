@@ -4,27 +4,247 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import type { AnimeDetails, Episode, Recommendation, Character, Relation } from "@/app/types/anime";
 
-interface AnimeyyEpisode {
-  episode: string;
+interface Anime123Episode {
+  episode: number;
+  label: string;
+  slug: string;
   episodeId: string;
   url: string;
+  m3u8?: string;
+  isFirst?: boolean;
+  isLast?: boolean;
   title?: string;
-  thumbnail?: string;
+  overview?: string;
   airDate?: string;
+  aired?: boolean;
+  rating?: string;
+  thumbnail?: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
 }
 
-interface AnimeyyResponse {
-  episodes: AnimeyyEpisode[];
+interface Anime123Response {
+  data: {
+    slug: string;
+    title: string;
+    cover: string;
+    synopsis: string;
+    genres: string[];
+    info: {
+      Type: string;
+      Genre: string;
+      Country: string;
+      Status: string;
+      Released: string;
+    };
+    episodes: Anime123Episode[];
+  };
 }
 
-// Read anime ID from URL once — no effect needed
-function getAnimeIdFromUrl(): string {
+interface AnilistEpisode {
+  episode: number;
+  absoluteEpisode: number;
+  title: string;
+  overview?: string;
+  airDate?: string;
+  aired?: boolean;
+  rating?: string;
+  thumbnail?: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
+}
+
+// Raw AniList GraphQL shape returned by maaa-six
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RawAnilist = Record<string, any>;
+
+// maaa-six API response
+interface MaaaSixResponse {
+  success?: boolean;
+  anilist?: RawAnilist;
+  animeInfo?: RawAnilist;
+  info?: RawAnilist;
+  data?: RawAnilist;
+  episodes?: {
+    total: number;
+    merged: AnilistEpisode[];
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+interface AnimeDaoEpisode {
+  id?: string;
+  episodeId?: string;
+  episode: number;
+  title?: string;
+  fullTitle?: string;
+  date?: string;
+  watchUrl?: string;
+  streamUrl?: string;
+  tmdbTitle?: string;
+  overview?: string;
+  airDate?: string;
+  aired?: boolean;
+  tmdbRating?: string;
+  thumbnail?: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
+}
+
+interface AnimeDaoResponse {
+  episodes?: AnimeDaoEpisode[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+/** Upgrade AniList CDN image URLs from medium/small to large */
+const anilistLarge = (url?: string): string => {
+  if (!url) return "";
+  return url
+    .replace("/cover/small/", "/cover/large/")
+    .replace("/cover/medium/", "/cover/large/")
+    .replace("/character/medium/", "/character/large/")
+    .replace("/staff/medium/", "/staff/large/");
+};
+
+/** Convert raw AniList GraphQL response → AnimeDetails shape the component uses */
+const normalizeAnilist = (raw: RawAnilist): AnimeDetails => {
+  const characters: Character[] = (raw.characters?.edges ?? []).map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (edge: any) => ({
+      id: edge.node?.id ?? 0,
+      name: {
+        full: edge.node?.name?.full ?? edge.node?.name?.userPreferred ?? "",
+        userPreferred: edge.node?.name?.userPreferred ?? edge.node?.name?.full ?? "",
+      },
+      image: anilistLarge(edge.node?.image?.large ?? edge.node?.image?.medium),
+      role: edge.role ?? "SUPPORTING",
+      voiceActors: (edge.voiceActors ?? []).map(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (va: any) => ({
+          id: va.id ?? 0,
+          name: { full: va.name?.full ?? "" },
+          image: anilistLarge(va.image?.large ?? va.image?.medium),
+          language: va.languageV2 ?? va.language ?? "",
+        })
+      ),
+    })
+  );
+
+  const relations: Relation[] = (raw.relations?.edges ?? []).map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (edge: any) => ({
+      id: edge.node?.id ?? 0,
+      title: {
+        romaji: edge.node?.title?.romaji ?? "",
+        english: edge.node?.title?.english ?? null,
+        userPreferred: edge.node?.title?.userPreferred ?? edge.node?.title?.romaji ?? "",
+        native: edge.node?.title?.native ?? null,
+      },
+      image: anilistLarge(edge.node?.coverImage?.large ?? edge.node?.coverImage?.medium),
+      type: edge.node?.type ?? edge.node?.format ?? "",
+      relationType: edge.relationType ?? "",
+      status: edge.node?.status ?? "",
+      rating: edge.node?.averageScore ?? null,
+      episodes: edge.node?.episodes ?? null,
+    })
+  );
+
+  const recommendations: Recommendation[] = (raw.recommendations?.nodes ?? [])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((n: any) => n?.mediaRecommendation)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((n: any) => {
+      const m = n.mediaRecommendation;
+      return {
+        id: m.id ?? 0,
+        title: {
+          romaji: m.title?.romaji ?? "",
+          english: m.title?.english ?? null,
+          userPreferred: m.title?.userPreferred ?? m.title?.romaji ?? "",
+          native: m.title?.native ?? null,
+        },
+        image: anilistLarge(m.coverImage?.large ?? m.coverImage?.medium),
+        type: m.format ?? m.type ?? "",
+        rating: m.averageScore ?? null,
+        episodes: m.episodes ?? null,
+      };
+    });
+
+  return {
+    id: raw.id,
+    title: {
+      romaji: raw.title?.romaji ?? "",
+      english: raw.title?.english ?? null,
+      native: raw.title?.native ?? null,
+      userPreferred: raw.title?.userPreferred ?? raw.title?.romaji ?? "",
+    },
+    image: anilistLarge(raw.coverImage?.large ?? raw.coverImage?.medium ?? raw.image),
+    cover: raw.bannerImage ?? raw.cover ?? null,
+    description: raw.description ?? "",
+    status: raw.status ?? "",
+    type: raw.format ?? raw.type ?? "",
+    rating: raw.averageScore ?? raw.rating ?? null,
+    releaseDate: raw.startDate?.year ?? raw.releaseDate ?? null,
+    totalEpisodes: raw.episodes ?? raw.totalEpisodes ?? null,
+    duration: raw.duration ?? null,
+    genres: raw.genres ?? [],
+    studios: (raw.studios?.nodes ?? [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((s: any) => s?.name ?? s)
+      .filter(Boolean),
+    trailer: raw.trailer?.id
+      ? { id: raw.trailer.id, site: raw.trailer.site ?? "youtube" }
+      : undefined,
+    characters,
+    relations,
+    recommendations,
+  } as AnimeDetails;
+};
+
+// AllAnime API response
+interface AllAnimeEpisode {
+  episodeId: string;
+  episode: string;
+  type: string;
+  label: string;
+  title?: string;
+  overview?: string;
+  airDate?: string;
+  aired?: boolean;
+  rating?: string;
+  thumbnail?: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
+}
+
+interface AllAnimeResponse {
+  anilistId: number;
+  provider: string;
+  animeId: string;
+  name: string;
+  total: number;
+  episodes: AllAnimeEpisode[];
+}
+
+const getAnimeIdFromUrl = (): string => {
   if (typeof window === "undefined") return "";
   const hash = window.location.hash.replace("#", "");
   const pathParts = window.location.pathname.split("/");
   const id = hash || pathParts[pathParts.length - 1] || "";
   return id !== "details" ? id : "";
-}
+};
+
+/** Remove duplicate episodes by episodeId, keeping the first occurrence */
+const dedupeEpisodes = (eps: Episode[]): Episode[] => {
+  const seen = new Set<string>();
+  return eps.filter((ep) => {
+    if (seen.has(ep.episodeId)) return false;
+    seen.add(ep.episodeId);
+    return true;
+  });
+};
 
 const PlayIcon = () => (
   <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
@@ -103,6 +323,17 @@ const getWeservImage = (imageUrl: string, width?: number): string => {
   }
 };
 
+/** Human-readable label for a provider key */
+const providerLabel = (p: string): string => {
+  switch (p) {
+    case "123anime":  return "123ANIME";
+    case "anilist":   return "ANILIST";
+    case "allanime":  return "ALLANIME";
+    case "animedao":  return "ANIMEDAO";
+    default:          return p.toUpperCase();
+  }
+};
+
 function AnimeDetailsPage() {
   const [animeId, setAnimeId] = useState<string>("");
 
@@ -117,16 +348,15 @@ function AnimeDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [episodesError, setEpisodesError] = useState<string | null>(null);
   const [showAllEpisodes, setShowAllEpisodes] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<string>("animepahe");
+  const [selectedProvider, setSelectedProvider] = useState<string>("anilist");
   const [activeTab, setActiveTab] = useState<"characters" | "recommendations" | "relations" | "info" | "episodes">("episodes");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [episodeRange, setEpisodeRange] = useState<string>("all");
-  const [animeyyId, setAnimeyyId] = useState<string | null>(null);
 
-  const baseProviders = ["animepahe", "hianime", "anizone"];
-  const providers = [...baseProviders, ...(animeyyId ? ["animeyy"] : [])];
+  // anilist is always first — it is the main provider
+  const providers = ["anilist", "animepahe", "hianime", "anizone", "123anime", "animedao", "allanime"];
 
-  // Update meta tags
+  // ── Update meta tags ──
   useEffect(() => {
     if (!animeData) return;
     const title =
@@ -163,7 +393,7 @@ function AnimeDetailsPage() {
     return () => { document.title = "Anime Details"; };
   }, [animeData]);
 
-  // Fetch anime details + animeyy ID from single endpoint
+  // ── Fetch anime details ──
   useEffect(() => {
     if (!animeId) return;
     let cancelled = false;
@@ -172,15 +402,34 @@ function AnimeDetailsPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await axios.get(
-          `https://animeyy-api.vercel.app/api/anilist/${animeId}`
+        const mainRes = await axios.get<MaaaSixResponse>(
+          `https://maaa-six.vercel.app/api/anime/${animeId}`
         );
+
         if (!cancelled) {
-          if (res.data?.anilist) setAnimeData(res.data.anilist);
-          if (res.data?.animeyy?.found && res.data.animeyy.bestMatch?.animeId) {
-            setAnimeyyId(res.data.animeyy.bestMatch.animeId);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const raw = mainRes.data as Record<string, any>;
+          console.log("[maaa-six] raw response:", raw);
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const findRaw = (): Record<string, any> | null => {
+            for (const key of ["anilist", "animeInfo", "info", "data", "anime", "media"]) {
+              if (raw[key]?.title) return raw[key];
+            }
+            if (raw?.title) return raw;
+            for (const val of Object.values(raw)) {
+              if (val && typeof val === "object" && !Array.isArray(val) && (val as RawAnilist).title)
+                return val as RawAnilist;
+            }
+            return null;
+          };
+
+          const rawAnime = findRaw();
+          if (rawAnime) {
+            setAnimeData(normalizeAnilist(rawAnime));
           } else {
-            setAnimeyyId(null);
+            console.error("[maaa-six] unrecognized response shape:", raw);
+            setError("No anime data returned from the server.");
           }
         }
       } catch (err) {
@@ -199,13 +448,9 @@ function AnimeDetailsPage() {
     return () => { cancelled = true; };
   }, [animeId]);
 
-  // Fetch episodes
+  // ── Fetch episodes ──
   useEffect(() => {
     if (!animeId) return;
-    if (selectedProvider === "animeyy" && !animeyyId) {
-      setEpisodes([]);
-      return;
-    }
 
     let cancelled = false;
 
@@ -215,35 +460,102 @@ function AnimeDetailsPage() {
       setEpisodes([]);
 
       try {
-        if (selectedProvider === "animeyy" && animeyyId) {
+        if (selectedProvider === "123anime") {
           const res = await axios.get(
-            `https://animeyy-api.vercel.app/api/info/${animeyyId}/${animeId}?all_pages=true`
+            `https://sad-ebon-nine.vercel.app/anime/123anime/details/${animeId}?apiKey=fuckyoubitch`
           );
           if (!cancelled) {
-            const data = res.data as AnimeyyResponse;
-            if (Array.isArray(data.episodes)) {
-              const mapped: Episode[] = data.episodes
+            const data = res.data as Anime123Response;
+            if (Array.isArray(data?.data?.episodes)) {
+              const mapped: Episode[] = data.data.episodes
                 .map((ep) => ({
-                  episodeNumber: parseInt(ep.episode) || 0,
+                  episodeNumber: ep.episodeNumber ?? ep.episode ?? 0,
                   episodeId: ep.episodeId,
+                  title: ep.title || ep.label || `Episode ${ep.episode}`,
+                  thumbnail: ep.thumbnail || undefined,
+                  airDate: ep.airDate || undefined,
+                }))
+                .sort((a, b) => a.episodeNumber - b.episodeNumber);
+              setEpisodes(dedupeEpisodes(mapped));
+            } else {
+              setEpisodes([]);
+            }
+          }
+        } else if (selectedProvider === "anilist") {
+          // ── MAIN provider: maaa-six ──
+          const res = await axios.get<MaaaSixResponse>(
+            `https://maaa-six.vercel.app/api/anime/${animeId}`
+          );
+          if (!cancelled) {
+            const merged = res.data?.episodes?.merged;
+            if (Array.isArray(merged)) {
+              const mapped: Episode[] = merged
+                .map((ep) => ({
+                  episodeNumber: ep.episode ?? ep.absoluteEpisode ?? 0,
+                  episodeId: String(ep.episode),
                   title: ep.title || `Episode ${ep.episode}`,
                   thumbnail: ep.thumbnail || undefined,
                   airDate: ep.airDate || undefined,
                 }))
                 .sort((a, b) => a.episodeNumber - b.episodeNumber);
-              setEpisodes(mapped);
+              setEpisodes(dedupeEpisodes(mapped));
+            } else {
+              setEpisodes([]);
+            }
+          }
+        } else if (selectedProvider === "animedao") {
+          // ── AnimDao provider ──
+          const res = await axios.get<AnimeDaoResponse>(
+            `https://sad-ebon-nine.vercel.app/anime/animedao/details/${animeId}?apiKey=fuckyoubitch`
+          );
+          if (!cancelled) {
+            const epList = res.data?.episodes;
+            if (Array.isArray(epList)) {
+              const mapped: Episode[] = epList
+                .map((ep) => ({
+                  episodeNumber: ep.episodeNumber ?? ep.episode ?? 0,
+                  episodeId: ep.episodeId ?? ep.id ?? String(ep.episode),
+                  title: ep.title || `Episode ${ep.episode}`,
+                  thumbnail: ep.thumbnail || undefined,
+                  airDate: ep.airDate || undefined,
+                }))
+                .sort((a, b) => a.episodeNumber - b.episodeNumber);
+              setEpisodes(dedupeEpisodes(mapped));
+            } else {
+              setEpisodes([]);
+            }
+          }
+        } else if (selectedProvider === "allanime") {
+          // ── AllAnime provider ──
+          const res = await axios.get<AllAnimeResponse>(
+            `https://sad-ebon-nine.vercel.app/anime/animeyubi/anilist/${animeId}`,
+            { params: { provider: "allanime", apiKey: "fuckyoubitch" } }
+          );
+          if (!cancelled) {
+            const epList = res.data?.episodes;
+            if (Array.isArray(epList)) {
+              const mapped: Episode[] = epList
+                .map((ep) => ({
+                  episodeNumber: ep.episodeNumber ?? parseInt(ep.episode) ?? 0,
+                  episodeId: ep.episodeId,
+                  title: ep.title || ep.label || `Episode ${ep.episode}`,
+                  thumbnail: ep.thumbnail || undefined,
+                  airDate: ep.airDate || undefined,
+                }))
+                .sort((a, b) => a.episodeNumber - b.episodeNumber);
+              setEpisodes(dedupeEpisodes(mapped));
             } else {
               setEpisodes([]);
             }
           }
         } else {
           const res = await axios.get(
-            `https://noone-bice.vercel.app/api/anilist/episodes/${animeId}`,
+            `https://dog-five-psi.vercel.app/api/anilist/episodes/${animeId}`,
             { params: { provider: selectedProvider } }
           );
           if (!cancelled) {
             const data = res.data?.providerEpisodes;
-            setEpisodes(Array.isArray(data) ? data : []);
+            setEpisodes(dedupeEpisodes(Array.isArray(data) ? data : []));
           }
         }
       } catch (err) {
@@ -260,7 +572,7 @@ function AnimeDetailsPage() {
 
     run();
     return () => { cancelled = true; };
-  }, [animeId, selectedProvider, animeyyId]);
+  }, [animeId, selectedProvider]);
 
   /* ── Early returns ── */
   if (!animeId) {
@@ -543,7 +855,7 @@ function AnimeDetailsPage() {
                     style={{ fontFamily: "Bebas Neue, sans-serif", letterSpacing: "0.05em" }}
                   >
                     {providers.map((p) => (
-                      <option key={p} value={p}>{p === "animeyy" ? "ANIMEYY" : p.toUpperCase()}</option>
+                      <option key={p} value={p}>{providerLabel(p)}</option>
                     ))}
                   </select>
                 </div>
@@ -602,7 +914,7 @@ function AnimeDetailsPage() {
                   <div className="text-center py-20">
                     <div className="text-gray-700 text-7xl mb-6">📺</div>
                     <h3 className="text-3xl font-bold text-white mb-4" style={{ fontFamily: "Bebas Neue, sans-serif" }}>
-                      NO EPISODES FOR {selectedProvider.toUpperCase()}
+                      NO EPISODES FOR {providerLabel(selectedProvider)}
                     </h3>
                     <p className="text-gray-400 text-lg mb-8" style={{ fontFamily: "Rajdhani, sans-serif" }}>Try selecting a different provider</p>
                     <div className="flex flex-wrap gap-4 justify-center">
@@ -613,7 +925,7 @@ function AnimeDetailsPage() {
                           className="group relative bg-red-600 text-white px-8 py-3 font-bold overflow-hidden"
                           style={{ fontFamily: "Bebas Neue, sans-serif", letterSpacing: "0.1em" }}
                         >
-                          <span className="relative z-10">TRY {p === "animeyy" ? "ANIMEYY" : p.toUpperCase()}</span>
+                          <span className="relative z-10">TRY {providerLabel(p)}</span>
                           <div className="absolute inset-0 bg-red-700 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
                         </button>
                       ))}
@@ -634,16 +946,22 @@ function AnimeDetailsPage() {
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                       {displayedEpisodes.map((episode, idx) => (
                         <div
-                          key={episode.episodeId}
+                          key={`${episode.episodeId}-${episode.episodeNumber}`}
                           onClick={() => {
                             if (selectedProvider === "animepahe") {
                               window.location.href = `/Watch/animepahe/${encodeURIComponent(episode.episodeId)}?animeId=${animeId}`;
                             } else if (selectedProvider === "hianime") {
                               window.location.href = `/Watch/hianime/${encodeURIComponent(episode.episodeId)}?animeId=${animeId}`;
-                            } else if (selectedProvider === "animeyy" && animeyyId) {
-                              window.location.href = `/Watch/animeyy/${encodeURIComponent(episode.episodeId)}?animeId=${animeyyId}/${animeId}`;
                             } else if (selectedProvider === "anizone") {
                               window.location.href = `/Watch/anizone/${encodeURIComponent(episode.episodeId)}?animeId=${animeId}`;
+                            } else if (selectedProvider === "123anime") {
+                              window.location.href = `/Watch/123anime/${encodeURIComponent(episode.episodeId)}`;
+                            } else if (selectedProvider === "anilist") {
+                              window.location.href = `/Watch/anilist/${encodeURIComponent(episode.episodeId)}/${animeId}`;
+                            } else if (selectedProvider === "animedao") {
+                              window.location.href = `/Watch/animedao/${encodeURIComponent(episode.episodeId)}?animeId=${animeId}`;
+                            } else if (selectedProvider === "allanime") {
+                              window.location.href = `/Watch/allanime/${encodeURIComponent(episode.episodeId)}?animeId=${animeId}`;
                             } else {
                               window.location.href = `/Watch/Player/episodeId=${encodeURIComponent(episode.episodeId)}&provider=${selectedProvider}&animeId=${animeId}`;
                             }
@@ -654,7 +972,7 @@ function AnimeDetailsPage() {
                           {episode.thumbnail ? (
                             <div className="relative aspect-video overflow-hidden">
                               <img
-                                src={getWeservImage(episode.thumbnail, 400)}
+                                src={episode.thumbnail}
                                 alt={episode.title}
                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                               />

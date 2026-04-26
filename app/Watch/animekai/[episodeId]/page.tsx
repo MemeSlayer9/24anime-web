@@ -53,43 +53,33 @@ interface Episode {
 interface AnimeData {
   anilistId: number;
   malId: number;
-  id: string;
-  name: string;
-  romaji: string;
-  altnames: string;
-  rating: string;
-  posterImage: string;
-  type: string;
-  japanese: string;
-  status: string;
-  releaseDate: string;
-  synopsis: string;
-  score: string;
-  genres: string[];
-  studios: string[];
-  producers: string[];
-  episodes: {
-    sub: number;
-    dub: number;
+  title: {
+    romaji: string;
+    english: string;
+    native: string;
   };
-  totalEpisodes: number;
-}
-
-interface RelatedAnime {
-  id: string;
-  title: string;
-  [key: string]: unknown;
+  image: string;
+  bannerImage: string;
+  score: number;
+  status: string;
+  format: string;
+  year: number;
+  synopsis: string;
+  genres: string[];
+  studio: string;
+  producers: string[];
+  releaseDate: string;
+  episodes: number | null;
+  season: string;
+  color: string;
 }
 
 interface AnimeApiResponse {
   data: AnimeData;
-  relatedSeasons: RelatedAnime[];
-  recommendedAnime: RelatedAnime[];
-  relatedAnime: RelatedAnime[];
   providerEpisodes: Episode[];
 }
 
-// Icons Components
+// Icons
 const PlayIcon = () => (
   <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="currentColor" viewBox="0 0 20 20">
     <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
@@ -144,7 +134,7 @@ const DownloadIcon = () => (
   </svg>
 );
 
-export default function Home() {
+export default function AnimekaiPlayer() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -175,126 +165,115 @@ export default function Home() {
   // Episode list states
   const [searchQuery, setSearchQuery] = useState("");
   const [episodeRange, setEpisodeRange] = useState("all");
-  const [showEpisodesList, setShowEpisodesList] = useState(true);
 
-  // Extract episodeId and animeId from URL
+  // ── Step 1: Read episodeId and animeId from URL ──
   useEffect(() => {
     const pathParts = window.location.pathname.split('/');
     const episodeIdFromUrl = pathParts[pathParts.length - 1];
-    
+
     if (episodeIdFromUrl && episodeIdFromUrl !== 'animekai') {
       setEpisodeId(decodeURIComponent(episodeIdFromUrl));
     }
 
     const urlParams = new URLSearchParams(window.location.search);
     const animeIdFromUrl = urlParams.get('animeId');
-    
     if (animeIdFromUrl) {
       setAnimeId(animeIdFromUrl);
     }
   }, []);
 
-  // Update document title when episode changes
+  // ── Step 2: Fetch anime data + episodes ──
   useEffect(() => {
-    const currentEp = episodes.find(ep => ep.episodeId === episodeId);
-    if (animeData && currentEp) {
-      const title = animeData.name || animeData.romaji || animeData.japanese || "Anime";
-      const pageTitle = `Episode ${currentEp.episodeNumber} - ${title}`;
-      document.title = pageTitle;
-    }
-  }, [animeData, episodes, episodeId]);
+    if (!animeId) return;
+    const animeIdOnly = animeId.split('/')[0];
 
-  // Handle fullscreen change and screen orientation
+    const fetchAnimeData = async () => {
+      try {
+        const response = await fetch(
+          `https://dream-chi-nine.vercel.app/api/anilist/episodes/${animeIdOnly}?provider=animekai`
+        );
+        if (!response.ok) throw new Error('Failed to fetch anime data');
+        const data: AnimeApiResponse = await response.json();
+        setAnimeData(data.data);
+        setEpisodes(data.providerEpisodes || []);
+      } catch (err) {
+        console.error('Failed to fetch anime data:', err);
+      }
+    };
+
+    fetchAnimeData();
+  }, [animeId]);
+
+  // ── Step 3: Sync currentEpisode whenever episodeId OR episodes changes ──
+  // Fixes the race condition: episodes may load after episodeId is already set,
+  // or episodeId may change after episodes are already loaded (prev/next nav).
+  useEffect(() => {
+    if (episodeId && episodes.length > 0) {
+      const episode = episodes.find(ep => ep.episodeId === episodeId);
+      if (episode) {
+        setCurrentEpisode(episode);
+      }
+    }
+  }, [episodeId, episodes]);
+
+  // ── Step 4: Update document title ──
+  useEffect(() => {
+    if (animeData && currentEpisode) {
+      const title =
+        animeData.title?.english ||
+        animeData.title?.romaji ||
+        animeData.title?.native ||
+        "Anime";
+      document.title = `Episode ${currentEpisode.episodeNumber} - ${title}`;
+    }
+  }, [animeData, currentEpisode]);
+
+  // ── Step 5: Fetch video when episodeId/version/playerMode changes ──
+  useEffect(() => {
+    if (!episodeId || playerMode !== 'video') return;
+
+    const fetchVideo = async () => {
+      setIsLoading(true);
+      setError(null);
+      setVideoData(null);
+
+      try {
+        const apiUrl = `https://diddyepstein-delta.vercel.app/api/animekai/sources/${episodeId}?version=${version}&server=server-1`;
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error('Failed to fetch video data');
+        const data: VideoApiResponse = await response.json();
+        setVideoData(data);
+        setSelectedQuality(data.data.sources[0]?.quality || 'auto');
+      } catch (err) {
+        setError('Failed to fetch video data: ' + (err as Error).message);
+        setIsLoading(false);
+      }
+    };
+
+    fetchVideo();
+  }, [episodeId, version, playerMode]);
+
+  // ── Fullscreen change handler ──
   useEffect(() => {
     const handleFullscreenChange = () => {
       const isNowFullscreen = !!document.fullscreenElement;
       setIsFullscreen(isNowFullscreen);
 
-      // Lock to landscape when entering fullscreen on mobile
       const orientation = screen.orientation as ScreenOrientation & Partial<ScreenOrientationLock>;
       if (isNowFullscreen && orientation?.lock) {
-        orientation.lock('landscape').catch(err => {
-          console.log('Screen orientation lock failed:', err);
-        });
+        orientation.lock('landscape').catch(() => {});
       }
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      // Unlock orientation when component unmounts
       const orientation = screen.orientation as ScreenOrientation & Partial<ScreenOrientationLock>;
-      if (orientation?.unlock) {
-        orientation.unlock();
-      }
+      if (orientation?.unlock) orientation.unlock();
     };
   }, []);
 
-  // Fetch anime data
-  const fetchAnimeData = async (id: string) => {
-    try {
-      const response = await fetch(`https://diddyepstein-delta.vercel.app/api/animekai/anime/${id}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch anime data');
-      }
-      
-      const data: AnimeApiResponse = await response.json();
-      setAnimeData(data.data);
-      setEpisodes(data.providerEpisodes);
-    } catch (err) {
-      console.error('Failed to fetch anime data:', err);
-    }
-  };
-
-  // Fetch video source
-  const fetchVideo = async (epId: string) => {
-    if (!epId) return;
-
-    setIsLoading(true);
-    setError(null);
-    setVideoData(null);
-
-    try {
-      const apiUrl = `https://diddyepstein-delta.vercel.app/api/animekai/sources/${epId}?version=${version}&server=server-1`;
-      const response = await fetch(apiUrl);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch video data');
-      }
-      
-      const data: VideoApiResponse = await response.json();
-      setVideoData(data);
-      setSelectedQuality(data.data.sources[0]?.quality || 'auto');
-    } catch (err) {
-      setError('Failed to fetch video data from API: ' + (err as Error).message);
-      setIsLoading(false);
-    }
-  };
-
-  // Load anime data
-  useEffect(() => {
-    if (animeId) {
-      const animeIdOnly = animeId.split('/')[0];
-      fetchAnimeData(animeIdOnly);
-    }
-  }, [animeId]);
-
-  // Load video when episode changes
-  useEffect(() => {
-    if (episodeId) {
-      const episode = episodes.find(ep => ep.episodeId === episodeId);
-      if (episode) {
-        setCurrentEpisode(episode);
-      }
-      if (playerMode === 'video') {
-        fetchVideo(episodeId);
-      }
-    }
-  }, [episodeId, version, playerMode]);
-
-  // Initialize video player
+  // ── Initialize HLS player ──
   useEffect(() => {
     if (!videoData || playerMode !== 'video') return;
 
@@ -325,7 +304,7 @@ export default function Home() {
           setIsLoading(false);
         });
 
-        hls.on(window.Hls.Events.ERROR, (_event, data) => {
+        hls.on(window.Hls.Events.ERROR, (_event: unknown, data: { fatal: boolean; type: string }) => {
           if (data.fatal) {
             setError(`Video loading error: ${data.type}`);
             setIsLoading(false);
@@ -350,22 +329,18 @@ export default function Home() {
 
       return () => {
         document.body.removeChild(script);
-        if (hlsRef.current) {
-          hlsRef.current.destroy();
-        }
+        if (hlsRef.current) hlsRef.current.destroy();
       };
     } else {
       initializePlayer();
     }
 
     return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-      }
+      if (hlsRef.current) hlsRef.current.destroy();
     };
   }, [videoData, playerMode]);
 
-  // Video event listeners
+  // ── Video event listeners ──
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -375,8 +350,7 @@ export default function Home() {
     const handleProgress = () => {
       if (video.buffered.length > 0) {
         const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-        const bufferedPercent = (bufferedEnd / video.duration) * 100;
-        setBuffered(bufferedPercent);
+        setBuffered((bufferedEnd / video.duration) * 100);
       }
     };
     const handlePlay = () => setIsPlaying(true);
@@ -397,16 +371,11 @@ export default function Home() {
     };
   }, [videoData]);
 
-  // Video control functions
+  // ── Video controls ──
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
-    
-    if (video.paused) {
-      video.play();
-    } else {
-      video.pause();
-    }
+    video.paused ? video.play() : video.pause();
   };
 
   const skip = (seconds: number) => {
@@ -443,14 +412,9 @@ export default function Home() {
     if (!document.fullscreenElement) {
       try {
         await containerRef.current?.requestFullscreen();
-        // Lock to landscape orientation on mobile devices
         const orientation = screen.orientation as ScreenOrientation & Partial<ScreenOrientationLock>;
         if (orientation?.lock) {
-          try {
-            await orientation.lock('landscape');
-          } catch (err) {
-            console.log('Screen orientation lock not supported or failed:', err);
-          }
+          try { await orientation.lock('landscape'); } catch {}
         }
       } catch (err) {
         console.error('Fullscreen request failed:', err);
@@ -458,11 +422,8 @@ export default function Home() {
     } else {
       try {
         await document.exitFullscreen();
-        // Unlock orientation when exiting fullscreen
         const orientation = screen.orientation as ScreenOrientation & Partial<ScreenOrientationLock>;
-        if (orientation?.unlock) {
-          orientation.unlock();
-        }
+        if (orientation?.unlock) orientation.unlock();
       } catch (err) {
         console.error('Exit fullscreen failed:', err);
       }
@@ -478,9 +439,7 @@ export default function Home() {
 
   const resetControlsTimeout = () => {
     setShowControls(true);
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     controlsTimeoutRef.current = setTimeout(() => {
       if (isPlaying) setShowControls(false);
     }, 3000);
@@ -491,14 +450,11 @@ export default function Home() {
     resetControlsTimeout();
   };
 
-  const handleVersionChange = (newVersion: 'sub' | 'dub') => {
-    setVersion(newVersion);
-  };
+  const handleVersionChange = (newVersion: 'sub' | 'dub') => setVersion(newVersion);
 
   const handleQualityChange = (quality: string) => {
     setSelectedQuality(quality);
     setShowQualityMenu(false);
-    // Implement quality switching logic here
   };
 
   const handleEpisodeChange = (newEpisodeId: string) => {
@@ -506,19 +462,22 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const getWeservImage = (url: string, width: number = 400) => {
-    if (!url) return '';
-    const encodedUrl = encodeURIComponent(url);
-    return `https://wsrv.nl/?url=${encodedUrl}&w=${width}&output=webp`;
-  };
+  const getAnimePoster = () => animeData?.image || '';
 
-  // Filter episodes
+  const getAnimeTitle = () =>
+    animeData?.title?.english ||
+    animeData?.title?.romaji ||
+    animeData?.title?.native ||
+    'No Title';
+
+  // ── Filter episodes ──
   const filteredEpisodes = episodes.filter(ep => {
-    const matchesSearch = ep.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         ep.episodeNumber.toString().includes(searchQuery);
-    
+    const matchesSearch =
+      ep.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ep.episodeNumber.toString().includes(searchQuery);
+
     if (episodeRange === 'all') return matchesSearch;
-    
+
     const [start, end] = episodeRange.split('-').map(Number);
     return matchesSearch && ep.episodeNumber >= start && ep.episodeNumber <= end;
   });
@@ -526,16 +485,14 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
       <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-3 sm:space-y-6">
-        
+
         {/* Player Mode Switcher */}
         <div className="flex justify-center">
           <div className="inline-flex bg-gray-800/80 rounded-lg p-1 gap-1">
             <button
               onClick={() => setPlayerMode('video')}
               className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
-                playerMode === 'video'
-                  ? 'bg-red-600 text-white shadow-lg'
-                  : 'text-gray-400 hover:text-white'
+                playerMode === 'video' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
               }`}
             >
               Video Player
@@ -543,9 +500,7 @@ export default function Home() {
             <button
               onClick={() => setPlayerMode('embed')}
               className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
-                playerMode === 'embed'
-                  ? 'bg-red-600 text-white shadow-lg'
-                  : 'text-gray-400 hover:text-white'
+                playerMode === 'embed' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
               }`}
             >
               Embed Player
@@ -554,7 +509,7 @@ export default function Home() {
         </div>
 
         {/* Video Player Container */}
-        <div 
+        <div
           ref={containerRef}
           className={`relative w-full bg-black overflow-hidden shadow-2xl group ${
             isFullscreen ? 'h-screen' : 'rounded-xl sm:rounded-2xl'
@@ -567,9 +522,7 @@ export default function Home() {
               <iframe
                 key={`embed-${animeId}-${currentEpisode.episodeNumber}-${version}`}
                 src={`https://vidnest.fun/anime/${animeId.split('/')[1] || animeId}/${currentEpisode.episodeNumber}/${version}`}
-                className={`w-full bg-black ${
-                  isFullscreen ? 'h-screen' : 'aspect-video'
-                }`}
+                className={`w-full bg-black ${isFullscreen ? 'h-screen' : 'aspect-video'}`}
                 allowFullScreen
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 style={{ border: 'none' }}
@@ -579,9 +532,7 @@ export default function Home() {
                   <button
                     onClick={() => handleVersionChange('sub')}
                     className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                      version === 'sub'
-                        ? 'bg-red-600 text-white shadow-lg'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                      version === 'sub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-800'
                     }`}
                   >
                     SUB
@@ -589,9 +540,7 @@ export default function Home() {
                   <button
                     onClick={() => handleVersionChange('dub')}
                     className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                      version === 'dub'
-                        ? 'bg-red-600 text-white shadow-lg'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                      version === 'dub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-gray-800'
                     }`}
                   >
                     DUB
@@ -603,9 +552,7 @@ export default function Home() {
             <>
               <video
                 ref={videoRef}
-                className={`w-full bg-black pointer-events-auto ${
-                  isFullscreen ? 'h-screen' : 'aspect-video'
-                }`}
+                className={`w-full bg-black pointer-events-auto ${isFullscreen ? 'h-screen' : 'aspect-video'}`}
                 style={{ objectFit: 'contain' }}
                 playsInline
                 onClick={togglePlay}
@@ -614,10 +561,11 @@ export default function Home() {
                 disableRemotePlayback
                 onContextMenu={(e) => e.preventDefault()}
               />
-              
-              {/* Custom Video Controls */}
+
+              {/* Controls overlay */}
               <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent transition-opacity duration-300 pointer-events-none ${showControls ? 'opacity-100' : 'opacity-0'}`}>
-                {/* Center Play/Pause Controls */}
+
+                {/* Center controls */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
                   <div className="flex items-center gap-4 sm:gap-6">
                     <button
@@ -627,15 +575,8 @@ export default function Home() {
                       <Rewind10Icon />
                     </button>
                     <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        togglePlay();
-                      }}
-                      onTouchEnd={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        togglePlay();
-                      }}
+                      onClick={(e) => { e.preventDefault(); togglePlay(); }}
+                      onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); togglePlay(); }}
                       className="w-16 h-16 sm:w-20 sm:h-20 bg-red-600/90 hover:bg-red-500 rounded-full flex items-center justify-center transition-all transform active:scale-95 shadow-2xl touch-manipulation"
                     >
                       {isPlaying ? <PauseIcon /> : <PlayIcon />}
@@ -649,21 +590,15 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Bottom Controls */}
+                {/* Bottom controls */}
                 <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 space-y-2 pointer-events-auto">
-                  {/* Progress Bar */}
+                  {/* Progress bar */}
                   <div className="relative group/progress h-3 sm:h-2 flex items-center">
                     <div className="absolute inset-0 h-2 sm:h-1 bg-gray-700 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-gray-500 transition-all"
-                        style={{ width: `${buffered}%` }}
-                      />
+                      <div className="h-full bg-gray-500 transition-all" style={{ width: `${buffered}%` }} />
                     </div>
                     <div className="absolute inset-0 h-2 sm:h-1 rounded-full overflow-hidden pointer-events-none">
-                      <div 
-                        className="h-full bg-red-500 transition-all"
-                        style={{ width: `${(currentTime / duration) * 100}%` }}
-                      />
+                      <div className="h-full bg-red-500 transition-all" style={{ width: `${(currentTime / duration) * 100}%` }} />
                     </div>
                     <input
                       type="range"
@@ -673,17 +608,13 @@ export default function Home() {
                       onChange={handleSeek}
                       className="absolute inset-0 w-full h-8 sm:h-2 opacity-0 cursor-pointer z-10 touch-manipulation"
                     />
-                    <div 
+                    <div
                       className="absolute w-4 h-4 sm:w-3 sm:h-3 bg-red-500 rounded-full shadow-lg pointer-events-none transition-opacity opacity-0 group-hover/progress:opacity-100 z-20"
-                      style={{ 
-                        left: `calc(${(currentTime / duration) * 100}% - 8px)`,
-                        top: '50%',
-                        transform: 'translateY(-50%)'
-                      }}
+                      style={{ left: `calc(${(currentTime / duration) * 100}% - 8px)`, top: '50%', transform: 'translateY(-50%)' }}
                     />
                   </div>
 
-                  {/* Control Buttons */}
+                  {/* Control buttons */}
                   <div className="flex items-center justify-between text-white gap-2">
                     <div className="flex items-center gap-1 sm:gap-3">
                       <button onClick={togglePlay} className="hover:text-red-400 transition-colors p-2 touch-manipulation">
@@ -701,9 +632,7 @@ export default function Home() {
                           value={isMuted ? 0 : volume}
                           onChange={handleVolumeChange}
                           className="w-0 group-hover/volume:w-20 transition-all duration-300 h-1 appearance-none bg-transparent cursor-pointer touch-manipulation"
-                          style={{
-                            background: `linear-gradient(to right, red 0%, red ${(isMuted ? 0 : volume) * 100}%, #4b5563 ${(isMuted ? 0 : volume) * 100}%, #4b5563 100%)`
-                          }}
+                          style={{ background: `linear-gradient(to right, red 0%, red ${(isMuted ? 0 : volume) * 100}%, #4b5563 ${(isMuted ? 0 : volume) * 100}%, #4b5563 100%)` }}
                         />
                       </div>
                       <span className="text-xs font-medium whitespace-nowrap">
@@ -722,15 +651,13 @@ export default function Home() {
                           <DownloadIcon />
                         </a>
                       )}
-                      
-                      {/* Sub/Dub Switcher */}
+
+                      {/* Sub/Dub */}
                       <div className="flex items-center gap-0.5 sm:gap-1 bg-gray-800/80 rounded-lg p-0.5 sm:p-1">
                         <button
                           onClick={() => handleVersionChange('sub')}
                           className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs font-semibold transition-all touch-manipulation ${
-                            version === 'sub'
-                              ? 'bg-red-600 text-white shadow-lg'
-                              : 'text-gray-400 hover:text-white'
+                            version === 'sub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
                           }`}
                         >
                           SUB
@@ -738,16 +665,14 @@ export default function Home() {
                         <button
                           onClick={() => handleVersionChange('dub')}
                           className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-xs font-semibold transition-all touch-manipulation ${
-                            version === 'dub'
-                              ? 'bg-red-600 text-white shadow-lg'
-                              : 'text-gray-400 hover:text-white'
+                            version === 'dub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'
                           }`}
                         >
                           DUB
                         </button>
                       </div>
 
-                      {/* Quality Selector */}
+                      {/* Quality */}
                       <div className="relative">
                         <button
                           onClick={() => setShowQualityMenu(!showQualityMenu)}
@@ -762,9 +687,7 @@ export default function Home() {
                                 key={source.quality}
                                 onClick={() => handleQualityChange(source.quality)}
                                 className={`w-full px-4 py-3 text-left text-xs hover:bg-red-600 transition-colors touch-manipulation ${
-                                  selectedQuality === source.quality
-                                    ? 'bg-red-600 text-white font-bold'
-                                    : 'text-gray-300'
+                                  selectedQuality === source.quality ? 'bg-red-600 text-white font-bold' : 'text-gray-300'
                                 }`}
                               >
                                 {source.quality}
@@ -774,8 +697,8 @@ export default function Home() {
                         )}
                       </div>
 
-                      <button 
-                        onClick={toggleFullscreen} 
+                      <button
+                        onClick={toggleFullscreen}
                         className="hover:text-red-400 transition-colors p-2 touch-manipulation flex items-center justify-center"
                       >
                         {isFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
@@ -789,12 +712,8 @@ export default function Home() {
             <div className="aspect-video flex items-center justify-center bg-gray-800">
               <div className="text-center space-y-4 max-w-md px-4">
                 <div className="text-5xl sm:text-6xl">🎙️</div>
-                <h2 className="text-xl sm:text-2xl font-bold text-red-400">
-                  Dub Not Available
-                </h2>
-                <p className="text-gray-300 text-sm sm:text-base">
-                  The dubbed version is not available for this episode.
-                </p>
+                <h2 className="text-xl sm:text-2xl font-bold text-red-400">Dub Not Available</h2>
+                <p className="text-gray-300 text-sm sm:text-base">The dubbed version is not available for this episode.</p>
                 <button
                   onClick={() => setVersion('sub')}
                   className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg"
@@ -819,11 +738,12 @@ export default function Home() {
         {currentEpisode && (
           <div className="bg-gradient-to-br from-gray-900 to-black backdrop-blur-lg rounded-xl sm:rounded-2xl p-3 sm:p-6 shadow-xl border border-red-900/50">
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
-              {/* Previous Episode Button */}
+
+              {/* Previous Episode */}
               {(() => {
                 const currentIndex = episodes.findIndex(ep => ep.episodeId === episodeId);
                 const previousEpisode = currentIndex > 0 ? episodes[currentIndex - 1] : null;
-                
+
                 return previousEpisode ? (
                   <button
                     onClick={() => handleEpisodeChange(previousEpisode.episodeId)}
@@ -847,12 +767,12 @@ export default function Home() {
                   </div>
                 );
               })()}
-              
+
               {/* Current Episode Info */}
               <div className="flex-1 flex flex-col sm:flex-row gap-3 sm:gap-6 bg-gradient-to-br from-red-950/50 to-black/50 p-3 sm:p-4 rounded-xl border border-red-900/50">
                 {currentEpisode.thumbnail && (
                   <img
-                    src={getWeservImage(currentEpisode.thumbnail)}
+                    src={currentEpisode.thumbnail}
                     alt={currentEpisode.title || `Episode ${currentEpisode.episodeNumber}`}
                     className="w-full sm:w-40 h-32 sm:h-24 object-cover rounded-xl shadow-lg border border-red-900/30"
                   />
@@ -860,16 +780,19 @@ export default function Home() {
                 <div className="flex-1 space-y-1 sm:space-y-2">
                   <div className="mb-1 sm:mb-2">
                     {animeData ? (
+                         <button
+                      onClick={() => window.location.href = `/details/${animeId}`}
+                      className="text-left hover:text-red-400 transition-colors group w-full"
+                    > 
                       <h1 className="text-base sm:text-xl font-bold text-white line-clamp-1">
-                        {animeData.name || animeData.romaji || "No Title"}
+                        {getAnimeTitle()}
                       </h1>
+                      </button>
                     ) : (
-                      <div className="text-base sm:text-xl font-bold text-gray-500">
-                        Loading title...
-                      </div>
+                      <div className="text-base sm:text-xl font-bold text-gray-500">Loading title...</div>
                     )}
                   </div>
-                  
+
                   <h2 className="text-lg sm:text-2xl font-bold text-red-500">
                     Episode {currentEpisode.episodeNumber}
                   </h2>
@@ -878,7 +801,7 @@ export default function Home() {
                   )}
                   {animeData && (
                     <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-400 pt-1">
-                      <span>{animeData.type}</span>
+                      <span>{animeData.format}</span>
                       <span>•</span>
                       <span>{animeData.status}</span>
                       <span>•</span>
@@ -887,12 +810,12 @@ export default function Home() {
                   )}
                 </div>
               </div>
-              
-              {/* Next Episode Button */}
+
+              {/* Next Episode */}
               {(() => {
                 const currentIndex = episodes.findIndex(ep => ep.episodeId === episodeId);
                 const nextEpisode = currentIndex < episodes.length - 1 ? episodes[currentIndex + 1] : null;
-                
+
                 return nextEpisode ? (
                   <button
                     onClick={() => handleEpisodeChange(nextEpisode.episodeId)}
@@ -921,7 +844,7 @@ export default function Home() {
         )}
 
         {/* Episodes List */}
-        {showEpisodesList && episodes.length > 0 && (
+        {episodes.length > 0 && (
           <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-lg rounded-xl sm:rounded-2xl p-3 sm:p-6 shadow-xl border border-gray-700/50 space-y-3 sm:space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
               <h3 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent">
@@ -935,28 +858,22 @@ export default function Home() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="px-3 sm:px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent w-full sm:w-48 text-sm"
                 />
-                
                 <select
                   value={episodeRange}
                   onChange={(e) => setEpisodeRange(e.target.value)}
                   className="px-3 sm:px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent cursor-pointer text-sm"
                 >
                   <option value="all">All Episodes</option>
-                  {(() => {
-                    const ranges = [];
-                    const totalEpisodes = episodes.length;
-                    for (let i = 1; i <= totalEpisodes; i += 25) {
-                      const end = Math.min(i + 24, totalEpisodes);
-                      ranges.push(
-                        <option key={`${i}-${end}`} value={`${i}-${end}`}>
-                          Episodes {i}-{end}
-                        </option>
-                      );
-                    }
-                    return ranges;
-                  })()}
+                  {Array.from({ length: Math.ceil(episodes.length / 25) }, (_, i) => {
+                    const start = i * 25 + 1;
+                    const end = Math.min(start + 24, episodes.length);
+                    return (
+                      <option key={`${start}-${end}`} value={`${start}-${end}`}>
+                        Episodes {start}-{end}
+                      </option>
+                    );
+                  })}
                 </select>
-                
                 <span className="text-gray-400 text-xs sm:text-sm text-center sm:text-left">
                   {filteredEpisodes.length} / {episodes.length} episodes
                 </span>
@@ -967,10 +884,7 @@ export default function Home() {
               <div className="text-center py-8 sm:py-12">
                 <p className="text-gray-400 text-base sm:text-lg">No episodes found matching your search.</p>
                 <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setEpisodeRange("all");
-                  }}
+                  onClick={() => { setSearchQuery(""); setEpisodeRange("all"); }}
                   className="mt-4 px-4 sm:px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm sm:text-base"
                 >
                   Clear Filters
@@ -990,12 +904,12 @@ export default function Home() {
                   >
                     <div className="space-y-1 sm:space-y-2">
                       <img
-                        src={getWeservImage(episode.thumbnail || animeData?.posterImage || '', 200)}
+                        src={episode.thumbnail || getAnimePoster()}
                         alt={episode.title || `Episode ${episode.episodeNumber}`}
                         className="w-full h-16 sm:h-24 object-cover rounded-md sm:rounded-lg"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.src = animeData?.posterImage || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="300"%3E%3Crect fill="%23333" width="200" height="300"/%3E%3Ctext fill="%23666" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E';
+                          target.src = getAnimePoster() || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="300"%3E%3Crect fill="%23333" width="200" height="300"/%3E%3Ctext fill="%23666" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E';
                         }}
                       />
                       <div className="font-bold text-xs sm:text-sm">Episode {episode.episodeNumber}</div>
@@ -1017,6 +931,7 @@ export default function Home() {
             )}
           </div>
         )}
+
       </div>
     </div>
   );
