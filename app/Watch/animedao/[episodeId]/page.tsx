@@ -117,11 +117,27 @@ const upsertMeta = (
 };
 
 const API_KEY = "fuckyoubitch";
+ /**https://bolok-five.vercel.app/
+ * Replace the external pestengyawa.vercel.app origin with the local Next.js
+ * /api/ prefix so every request routes through the rewrite proxy and avoids
+ * CORS restrictions in the browser.
+ */
+function proxyify(url: string): string {
+  if (!url) return url;
+  return url.replace(/^https?:\/\/bolok-five\.vercel\.app\//i, "/api/");
+}
 
-/** Force HTTPS and append &apiKey so the proxy middleware authenticates. */
+/**
+ * Route through the local proxy, ensure HTTPS (for non-relative paths),
+ * and append &apiKey so the proxy middleware can authenticate.
+ */
 function withKey(url: string): string {
   if (!url) return url;
-  const secure = url.replace(/^http:\/\//i, "https://");
+  // Route external origin through /api/ rewrite first
+  const local = proxyify(url);
+  // If still an absolute URL (some other CDN), upgrade to HTTPS
+  const secure = local.startsWith("/") ? local : local.replace(/^http:\/\//i, "https://");
+  // Append apiKey if not already present
   if (secure.includes("apiKey=") || secure.includes("apiKey%3D")) return secure;
   const sep = secure.includes("?") ? "&" : "?";
   return `${secure}${sep}apiKey=${API_KEY}`;
@@ -233,9 +249,8 @@ export default function AnimeKaiPlayer(): React.ReactElement {
         setServerIdx(0);
         setPlayerUrl("");
 
-        const res = await fetch(
-          `https://pestengyawa.vercel.app/anime/animedao/source/${episodeId}?apiKey=fuckyoubitch`
-        );
+        const res = await fetch(`/api/anime/animedao/source/${episodeId}?apiKey=fuckyoubitch`);
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const d: AnimeDaoSourceResponse = await res.json();
 
@@ -255,7 +270,6 @@ export default function AnimeKaiPlayer(): React.ReactElement {
         const { m3u8, streams, subtitle, playerUrl: pu } = extractStreams(defaultServers);
         if (!m3u8) throw new Error("No stream source available");
 
-        // Always give stream directly to VideoPlayer — let onVersionFallback handle real failures
         setM3u8Url(m3u8);
         setQualityStreams(streams);
         setSubtitleUrl(subtitle);
@@ -281,7 +295,6 @@ export default function AnimeKaiPlayer(): React.ReactElement {
     const { m3u8, streams, subtitle, playerUrl: pu } = extractStreams(servers);
     if (!m3u8) return;
 
-    // Always give stream directly to VideoPlayer — let onVersionFallback handle real failures
     setM3u8Url(m3u8);
     setQualityStreams(streams);
     setSubtitleUrl(subtitle);
@@ -297,7 +310,7 @@ export default function AnimeKaiPlayer(): React.ReactElement {
       try {
         setLoadingEpisodes(true);
         const res = await fetch(
-          `https://sad-ebon-nine.vercel.app/anime/animedao/episodes/${animeSlug}?apiKey=fuckyoubitch`
+          `/api/anime/animedao/episodes/${animeSlug}?apiKey=fuckyoubitch`
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
@@ -340,7 +353,7 @@ export default function AnimeKaiPlayer(): React.ReactElement {
     (async () => {
       try {
         const res = await fetch(
-          `https://sad-ebon-nine.vercel.app/anime/animedao/episodes/${animeSlug}?apiKey=fuckyoubitch`
+          `/api/anime/animedao/episodes/${animeSlug}?apiKey=fuckyoubitch`
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json: ApiSlugResponse = await res.json();
@@ -386,7 +399,6 @@ export default function AnimeKaiPlayer(): React.ReactElement {
     const nextIdx = serverIdx + 1;
 
     if (servers && nextIdx < servers.length) {
-      // Try the next server's m3u8
       const { m3u8, streams, subtitle, playerUrl: pu } = extractStreams([servers[nextIdx]]);
       setServerIdx(nextIdx);
       setM3u8Url(m3u8);
@@ -591,7 +603,6 @@ export default function AnimeKaiPlayer(): React.ReactElement {
               subtitles={subtitleUrl ? [subtitleUrl] : []}
               isDub={version === "dub"}
               onVersionFallback={handleStreamFail}
-              
             />
           )}
 

@@ -402,9 +402,9 @@ function AnimeDetailsPage() {
       setLoading(true);
       setError(null);
       try {
-        const mainRes = await axios.get<MaaaSixResponse>(
-          `https://maaa-six.vercel.app/api/anime/${animeId}`
-        );
+      const mainRes = await axios.get<MaaaSixResponse>(
+  `/maaa/api/anime/${animeId}`
+);
 
         if (!cancelled) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -462,7 +462,7 @@ function AnimeDetailsPage() {
       try {
         if (selectedProvider === "123anime") {
           const res = await axios.get(
-            `https://sad-ebon-nine.vercel.app/anime/123anime/details/${animeId}?apiKey=fuckyoubitch`
+            `/api/anime/123anime/details/${animeId}?apiKey=fuckyoubitch`
           );
           if (!cancelled) {
             const data = res.data as Anime123Response;
@@ -484,8 +484,8 @@ function AnimeDetailsPage() {
         } else if (selectedProvider === "anilist") {
           // ── MAIN provider: maaa-six ──
           const res = await axios.get<MaaaSixResponse>(
-            `https://maaa-six.vercel.app/api/anime/${animeId}`
-          );
+  `/maaa/api/anime/${animeId}`
+);
           if (!cancelled) {
             const merged = res.data?.episodes?.merged;
             if (Array.isArray(merged)) {
@@ -506,7 +506,7 @@ function AnimeDetailsPage() {
         } else if (selectedProvider === "animedao") {
           // ── AnimDao provider ──
           const res = await axios.get<AnimeDaoResponse>(
-            `https://sad-ebon-nine.vercel.app/anime/animedao/details/${animeId}?apiKey=fuckyoubitch`
+            `/api/anime/animedao/details/${animeId}?apiKey=fuckyoubitch`
           );
           if (!cancelled) {
             const epList = res.data?.episodes;
@@ -528,7 +528,7 @@ function AnimeDetailsPage() {
         } else if (selectedProvider === "allanime") {
           // ── AllAnime provider ──
           const res = await axios.get<AllAnimeResponse>(
-            `https://sad-ebon-nine.vercel.app/anime/animeyubi/anilist/${animeId}`,
+            `/api/animeanimeyubi/anilist/${animeId}`,
             { params: { provider: "allanime", apiKey: "fuckyoubitch" } }
           );
           if (!cancelled) {

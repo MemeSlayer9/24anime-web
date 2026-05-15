@@ -209,7 +209,7 @@ export default function AnimeKaiPlayer(): React.ReactElement {
         setAnilistChecked(false);
         setQualityStreams([]);
         const res = await fetch(
-          `https://sad-ebon-nine.vercel.app/anime/123anime/watch/${episodeId}?apiKey=fuckyoubitch`
+          `/api/anime/123anime/watch/${episodeId}?apiKey=fuckyoubitch`
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const d: ApiWatchResponse = await res.json();
@@ -269,7 +269,7 @@ export default function AnimeKaiPlayer(): React.ReactElement {
       try {
         setLoadingEpisodes(true);
         const res = await fetch(
-          `https://sad-ebon-nine.vercel.app/anime/123anime/slug/${animeSlug}?apiKey=fuckyoubitch`
+          `/api/anime/123anime/slug/${animeSlug}?apiKey=fuckyoubitch`
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json: ApiSlugResponse = await res.json();

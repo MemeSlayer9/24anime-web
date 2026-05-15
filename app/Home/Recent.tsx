@@ -15,7 +15,7 @@ const SOURCES: { label: string; value: AnimeSource }[] = [
 ];
 
 export default function Recent() {
-  const [activeSource, setActiveSource] = useState<AnimeSource>('123anime');
+  const [activeSource, setActiveSource] = useState<AnimeSource>('animedao');
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 

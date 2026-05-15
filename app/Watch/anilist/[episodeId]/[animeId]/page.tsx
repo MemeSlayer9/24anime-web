@@ -127,7 +127,7 @@ export default function AnilistPlayer(): React.ReactElement {
       try {
         setLoadingEpisodes(true);
         setError(null);
-        const res  = await fetch(`https://maaa-six.vercel.app/api/anime/${animeId}`);
+        const res  = await fetch(`/maaa/api/anime/${animeId}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json: AnilistResponse = await res.json();
 

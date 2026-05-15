@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 
-// Custom hook for window dimensions
 function useWindowDimensions() {
   const [windowDimensions, setWindowDimensions] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 0,
@@ -12,14 +11,9 @@ function useWindowDimensions() {
 
   useEffect(() => {
     function handleResize() {
-      setWindowDimensions({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
+      setWindowDimensions({ width: window.innerWidth, height: window.innerHeight });
     }
-
     handleResize();
-    
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -27,15 +21,32 @@ function useWindowDimensions() {
   return windowDimensions;
 }
 
-interface AnimeItem {
-  id: string;
-  malId?: number;
-  title: {
+interface RawAnimeItem {
+  id: number;
+  title?: {
     romaji?: string;
     english?: string;
     native?: string;
-    userPreferred?: string;
   };
+  coverImage?: {
+    extraLarge?: string;
+    large?: string;
+  };
+  bannerImage?: string;
+  description?: string;
+  status?: string;
+  seasonYear?: number;
+  averageScore?: number;
+  meanScore?: number;
+  genres?: string[];
+  episodes?: number;
+  duration?: number;
+  format?: string;
+}
+
+interface AnimeItem {
+  id: number;
+  title: { romaji?: string; english?: string; native?: string };
   image: string;
   cover: string;
   description: string;
@@ -48,18 +59,20 @@ interface AnimeItem {
   type: string;
 }
 
-// Custom Icon Components
+function normalizeStatus(status: string): string {
+  switch (status) {
+    case "RELEASING": return "Ongoing";
+    case "FINISHED": return "Finished";
+    case "NOT_YET_RELEASED": return "Upcoming";
+    case "CANCELLED": return "Cancelled";
+    case "HIATUS": return "Hiatus";
+    default: return status;
+  }
+}
+
 const PlayIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
     <path d="M8 5v14l11-7z"/>
-  </svg>
-);
-
-const InfoIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10"/>
-    <line x1="12" y1="16" x2="12" y2="12"/>
-    <line x1="12" y1="8" x2="12.01" y2="8"/>
   </svg>
 );
 
@@ -82,14 +95,13 @@ const ChevronRightIcon = () => (
 );
 
 function Carousel() {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const [animeData, setAnimeData] = useState<AnimeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-  
-  // Touch/Swipe states
+
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
@@ -99,12 +111,29 @@ function Carousel() {
     async function fetchTrending() {
       try {
         setLoading(true);
-        const response = await axios.get("https://makgago.vercel.app/meta/anilist/trending");
-        
+        const response = await axios.get("maaa/api/trending");
         const data = response.data;
-        
-        if (data.results && Array.isArray(data.results)) {
-          setAnimeData(data.results.slice(0, 10));
+
+        if (data.success && Array.isArray(data.media)) {
+          const mapped: AnimeItem[] = data.media.slice(0, 10).map((item: RawAnimeItem) => ({
+            id: item.id,
+            title: {
+              romaji: item.title?.romaji,
+              english: item.title?.english,
+              native: item.title?.native,
+            },
+            image: item.coverImage?.extraLarge || item.coverImage?.large || "",
+            cover: item.bannerImage || item.coverImage?.extraLarge || "",
+            description: item.description || "",
+            status: normalizeStatus(item.status || ""),
+            releaseDate: item.seasonYear || 0,
+            rating: item.averageScore ?? item.meanScore,
+            genres: item.genres || [],
+            totalEpisodes: item.episodes ?? null,
+            duration: item.duration,
+            type: item.format || "TV",
+          }));
+          setAnimeData(mapped);
         } else {
           throw new Error("Invalid data structure");
         }
@@ -123,14 +152,11 @@ function Carousel() {
     fetchTrending();
   }, []);
 
-  // Auto-play functionality
   useEffect(() => {
     if (!isAutoPlaying || animeData.length === 0) return;
-
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % animeData.length);
     }, 5000);
-
     return () => clearInterval(interval);
   }, [isAutoPlaying, animeData.length]);
 
@@ -144,63 +170,30 @@ function Carousel() {
     setIsAutoPlaying(false);
   };
 
-  // Touch handlers for swipe gestures
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.targetTouches[0].clientX);
     setTouchEnd(e.targetTouches[0].clientX);
     setIsSwiping(true);
   };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
+  const handleTouchMove = (e: React.TouchEvent) => setTouchEnd(e.targetTouches[0].clientX);
   const handleTouchEnd = () => {
     if (!isSwiping) return;
-    
-    const swipeThreshold = 50; // Minimum distance for a swipe
     const distance = touchStart - touchEnd;
-    
-    if (Math.abs(distance) > swipeThreshold) {
-      if (distance > 0) {
-        // Swiped left - go to next
-        goToNext();
-      } else {
-        // Swiped right - go to previous
-        goToPrev();
-      }
-    }
-    
+    if (Math.abs(distance) > 50) distance > 0 ? goToNext() : goToPrev();
     setIsSwiping(false);
   };
 
-  // Mouse handlers for desktop drag (optional enhancement)
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (width > 768) return; // Only on mobile
+    if (width > 768) return;
     setTouchStart(e.clientX);
     setTouchEnd(e.clientX);
     setIsSwiping(true);
   };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isSwiping) return;
-    setTouchEnd(e.clientX);
-  };
-
+  const handleMouseMove = (e: React.MouseEvent) => { if (isSwiping) setTouchEnd(e.clientX); };
   const handleMouseUp = () => {
     if (!isSwiping) return;
-    
-    const swipeThreshold = 50;
     const distance = touchStart - touchEnd;
-    
-    if (Math.abs(distance) > swipeThreshold) {
-      if (distance > 0) {
-        goToNext();
-      } else {
-        goToPrev();
-      }
-    }
-    
+    if (Math.abs(distance) > 50) distance > 0 ? goToNext() : goToPrev();
     setIsSwiping(false);
   };
 
@@ -225,12 +218,12 @@ function Carousel() {
 
   const isMobile = width <= 768;
   const currentAnime = animeData[currentIndex];
-  const title = currentAnime.title.english || currentAnime.title.romaji || currentAnime.title.userPreferred || "Unknown Title";
+  const title = currentAnime.title.english || currentAnime.title.romaji || "Unknown Title";
 
   return (
-    <div 
+    <div
       ref={carouselRef}
-      className="relative w-full overflow-hidden select-none" 
+      className="relative w-full overflow-hidden select-none"
       style={{ height: isMobile ? '500px' : '700px' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -240,15 +233,11 @@ function Carousel() {
       onMouseUp={handleMouseUp}
       onMouseLeave={() => setIsSwiping(false)}
     >
-      {/* Background Images with transition */}
       {animeData.map((item, index) => (
         <div
           key={item.id}
           className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
-          style={{
-            opacity: index === currentIndex ? 1 : 0,
-            pointerEvents: index === currentIndex ? 'auto' : 'none'
-          }}
+          style={{ opacity: index === currentIndex ? 1 : 0, pointerEvents: index === currentIndex ? 'auto' : 'none' }}
         >
           <img
             src={isMobile ? (item.image || item.cover) : (item.cover || item.image)}
@@ -256,39 +245,28 @@ function Carousel() {
             className="w-full h-full object-cover"
             draggable="false"
             onError={(e) => {
-              const fallbackSrc = isMobile ? item.cover : item.image;
-              if (fallbackSrc && e.currentTarget.src !== fallbackSrc) {
-                e.currentTarget.src = fallbackSrc;
-              }
+              const fallback = isMobile ? item.cover : item.image;
+              if (fallback && e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
             }}
           />
-          
-          {/* Multiple gradient overlays for depth */}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black" />
         </div>
       ))}
 
-      {/* Content Container */}
       <div className="relative h-full flex items-end pb-20 md:pb-32 pointer-events-none">
         <div className="container mx-auto px-6 md:px-12 max-w-7xl">
           <div className="max-w-3xl space-y-4 md:space-y-6">
-            {/* Title with animation */}
-            <h1 
-              className="text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-tight transform transition-all duration-700"
-              style={{
-                textShadow: '2px 2px 20px rgba(0,0,0,0.8)',
-                opacity: 1,
-                transform: 'translateY(0)'
-              }}
+            <h1
+              className="text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-tight"
+              style={{ textShadow: '2px 2px 20px rgba(0,0,0,0.8)' }}
             >
               {title}
             </h1>
 
-            {/* Meta Information */}
             <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm">
-              {currentAnime.rating && (
+              {currentAnime.rating != null && (
                 <div className="flex items-center gap-1 bg-yellow-500/90 text-black px-2 py-0.5 rounded-full font-semibold">
                   <StarIcon />
                   <span>{(currentAnime.rating / 10).toFixed(1)}</span>
@@ -297,12 +275,16 @@ function Carousel() {
               <span className="bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded-full font-medium">
                 {currentAnime.type}
               </span>
-              <span className="bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded-full font-medium">
-                {currentAnime.releaseDate}
-              </span>
+              {currentAnime.releaseDate > 0 && (
+                <span className="bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded-full font-medium">
+                  {currentAnime.releaseDate}
+                </span>
+              )}
               <span className={`px-2 py-0.5 rounded-full font-medium ${
-                currentAnime.status === 'Ongoing' 
-                  ? 'bg-green-500/90 text-white' 
+                currentAnime.status === 'Ongoing'
+                  ? 'bg-green-500/90 text-white'
+                  : currentAnime.status === 'Upcoming'
+                  ? 'bg-purple-500/90 text-white'
                   : 'bg-blue-500/90 text-white'
               }`}>
                 {currentAnime.status}
@@ -314,28 +296,22 @@ function Carousel() {
               )}
             </div>
 
-            {/* Genres - Desktop only */}
             {!isMobile && currentAnime.genres && currentAnime.genres.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {currentAnime.genres.slice(0, 4).map((genre, idx) => (
-                  <span 
-                    key={idx}
-                    className="text-xs text-white/80 border border-white/30 px-2 py-0.5 rounded-full backdrop-blur-sm"
-                  >
+                  <span key={idx} className="text-xs text-white/80 border border-white/30 px-2 py-0.5 rounded-full backdrop-blur-sm">
                     {genre}
                   </span>
                 ))}
               </div>
             )}
 
-            {/* Description - Desktop only */}
             {!isMobile && (
               <p className="text-sm md:text-base text-gray-200 leading-relaxed line-clamp-2 max-w-2xl">
                 {currentAnime.description?.replace(/<[^>]*>/g, '') || "No description available"}
               </p>
             )}
 
-            {/* Action Buttons */}
             <div className="flex flex-wrap gap-4 pt-4 pointer-events-auto">
               <button
                 onClick={() => window.location.href = `/details/${currentAnime.id}`}
@@ -351,7 +327,6 @@ function Carousel() {
         </div>
       </div>
 
-      {/* Navigation Arrows - Desktop only */}
       {!isMobile && (
         <>
           <button
@@ -361,7 +336,6 @@ function Carousel() {
           >
             <ChevronLeftIcon />
           </button>
-          
           <button
             onClick={goToNext}
             className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/60 backdrop-blur-sm text-white p-3 rounded-full transition-all duration-300 hover:scale-110 z-10"
@@ -372,20 +346,14 @@ function Carousel() {
         </>
       )}
 
-      {/* Pagination Dots - Desktop only */}
       {!isMobile && (
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
           {animeData.map((_, index) => (
             <button
               key={index}
-              onClick={() => {
-                setCurrentIndex(index);
-                setIsAutoPlaying(false);
-              }}
+              onClick={() => { setCurrentIndex(index); setIsAutoPlaying(false); }}
               className={`transition-all duration-300 rounded-full ${
-                index === currentIndex 
-                  ? 'bg-red-600 w-8 h-2' 
-                  : 'bg-white/40 hover:bg-white/60 w-2 h-2'
+                index === currentIndex ? 'bg-red-600 w-8 h-2' : 'bg-white/40 hover:bg-white/60 w-2 h-2'
               }`}
               aria-label={`Go to slide ${index + 1}`}
             />

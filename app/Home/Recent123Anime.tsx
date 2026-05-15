@@ -31,8 +31,7 @@ function fetchReducer(_state: FetchState, action: FetchAction): FetchState {
 }
 
 const API_KEY = 'fuckyoubitch';
-const BASE_URL = 'https://sad-ebon-nine.vercel.app/anime/123anime/recent';
-
+const BASE_URL = '/api/anime/123anime/recent';
 const CATEGORIES: { label: string; value: AnimeCategory }[] = [
   { label: 'SUB',     value: 'subbed-anime'  },
   { label: 'DUB',     value: 'dubbed-anime'  },

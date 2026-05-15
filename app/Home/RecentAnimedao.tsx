@@ -30,7 +30,7 @@ function fetchReducer(_state: FetchState, action: FetchAction): FetchState {
   }
 }
 
-const API_URL = 'https://sad-ebon-nine.vercel.app/anime/animedao/recent?apiKey=fuckyoubitch';
+const API_URL = '/api/anime/animedao/recent?apiKey=fuckyoubitch';
 const ITEMS_PER_PAGE = 30;
 
 export default function AnimeEpisodesGrid() {
