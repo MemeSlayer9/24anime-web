@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  turbopack: {}, // silence the Turbopack warning
   async rewrites() {
     return [
       {
