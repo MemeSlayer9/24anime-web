@@ -171,10 +171,10 @@ export default function VideoPlayer({
       await wrapRef.current.requestFullscreen().catch(() => {});
       try {
         const orientation = screen.orientation as ScreenOrientation & {
-          lock: (orientation: "landscape" | "portrait" | "landscape-primary" | "landscape-secondary" | "portrait-primary" | "portrait-secondary" | "natural" | "any") => Promise<void>;
+          lock: (o: OrientationLockType) => Promise<void>;
         };
         await orientation.lock("landscape");
-      } catch { /* not supported on this browser */ }
+      } catch { /* not supported */ }
     } else {
       await document.exitFullscreen().catch(() => {});
       try { screen.orientation.unlock(); } catch { /* noop */ }
@@ -185,9 +185,7 @@ export default function VideoPlayer({
     const fn = () => {
       const isFs = !!document.fullscreenElement;
       setFullscreen(isFs);
-      if (!isFs) {
-        try { screen.orientation.unlock(); } catch { /* noop */ }
-      }
+      if (!isFs) { try { screen.orientation.unlock(); } catch { /* noop */ } }
     };
     document.addEventListener("fullscreenchange", fn);
     return () => document.removeEventListener("fullscreenchange", fn);
@@ -206,6 +204,88 @@ export default function VideoPlayer({
     window.addEventListener("keydown", fn);
     return () => window.removeEventListener("keydown", fn);
   }, [togglePlay, skip, toggleFs, toggleMute, subtitles]);
+
+  /* ── DevTools detection → destroy stream + redirect ── */
+  useEffect(() => {
+    const REDIRECT     = "/";
+    // Require 3 consecutive positive detections before bailing.
+    // This prevents a single fluke measurement (slow machine,
+    // backgrounded tab, browser animation frame spike) from
+    // triggering a false redirect.
+    const STRIKE_LIMIT = 3;
+    let strikes = 0;
+    let tripped = false;
+
+    const bail = () => {
+      if (tripped) return;
+      tripped = true;
+      // Wipe the stream src BEFORE navigating so the Network tab
+      // cannot reveal the HLS URL even if it was already open.
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.src = "";
+        videoRef.current.removeAttribute("src");
+        videoRef.current.load();
+      }
+      hlsRef.current?.destroy();
+      hlsRef.current = null;
+      window.location.replace(REDIRECT);
+    };
+
+    // ── Method 1: viewport size diff (docked DevTools panel) ─────────
+    // When DevTools is docked to the side or bottom, it shrinks
+    // window.innerWidth or window.innerHeight while the outer
+    // dimensions stay the same. 160 px threshold avoids triggering
+    // on normal browser chrome (scrollbars, mobile address bars).
+    // Does NOT catch undocked DevTools in a separate window — that
+    // is handled by Method 2.
+    const THRESHOLD = 160;
+    const sizeCheck = () => {
+      const hit =
+        window.outerWidth  - window.innerWidth  > THRESHOLD ||
+        window.outerHeight - window.innerHeight > THRESHOLD;
+      if (hit) {
+        strikes++;
+        if (strikes >= STRIKE_LIMIT) bail();
+      } else {
+        strikes = 0; // reset on clean reading
+      }
+    };
+
+    // ── Method 2: debugger timing (Sources panel, any dock mode) ─────
+    // When the Sources panel has been visited at least once, Chrome/
+    // Firefox pause JS execution at every `debugger` statement.
+    // That pause adds ≥ hundreds of ms. We use 200 ms as the threshold
+    // (generous enough for slow machines, tight enough to be reliable).
+    // NOTE: this does NOT fire if DevTools is open but Sources was never
+    // clicked — console-only users are handled by Method 1 (docked) or
+    // are not actually inspecting the source/network.
+    const debuggerCheck = () => {
+      const t = performance.now();
+      // eslint-disable-next-line no-debugger
+      debugger;
+      if (performance.now() - t > 200) bail();
+    };
+
+    // Initial checks on mount
+    sizeCheck();
+    debuggerCheck();
+
+    // Repeat every second
+    const interval = setInterval(() => {
+      sizeCheck();
+      debuggerCheck();
+    }, 1000);
+
+    // Catch docking/undocking immediately on resize
+    window.addEventListener("resize", sizeCheck);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("resize", sizeCheck);
+    };
+  // videoRef and hlsRef are stable refs — intentionally excluded
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* quality apply */
   const applyQuality = useCallback((q: "auto" | number) => {
@@ -230,19 +310,15 @@ export default function VideoPlayer({
     const video = videoRef.current;
     let gone    = false;
 
-    console.log("[VP] src →", src);
-
     setLoading(true);
     setError(null);
     setPlaying(false);
     playingR.current = false;
 
-    /* 12-second watchdog */
     if (loadTmr.current) clearTimeout(loadTmr.current);
     loadTmr.current = setTimeout(() => {
       if (gone) return;
-      console.error("[VP] 12 s timeout — stream URL may be unreachable or blocked by CORS.\nURL:", src);
-      setError("Stream timed out. Open DevTools → Network to inspect the URL.");
+      setError("Stream timed out. The URL may be unreachable.");
       setLoading(false);
     }, 12_000);
 
@@ -286,7 +362,6 @@ export default function VideoPlayer({
     (async () => {
       if (gone) return;
 
-      /* ── Safari native HLS ── */
       if (!("MediaSource" in window) && video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = src;
         if (resumeTime) video.currentTime = resumeTime;
@@ -295,7 +370,6 @@ export default function VideoPlayer({
         return;
       }
 
-      /* ── Dynamic import hls.js ── */
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let Hls: any;
       try {
@@ -306,7 +380,7 @@ export default function VideoPlayer({
           video.src = src; video.load(); video.play().catch(() => {});
         } else {
           clearWatchdog();
-          setError("Could not load HLS library. Make sure hls.js is installed: npm i hls.js");
+          setError("Could not load HLS library. Run: npm i hls.js");
           setLoading(false);
         }
         return;
@@ -326,7 +400,6 @@ export default function VideoPlayer({
         return;
       }
 
-      /* ── HLS.js ── */
       hlsRef.current?.destroy();
       levelsRef.current = [];
 
@@ -359,7 +432,6 @@ export default function VideoPlayer({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hls.on(Hls.Events.MANIFEST_PARSED, (_: string, data: any) => {
         if (gone) return;
-        console.log("[VP] manifest parsed →", data.levels.length, "levels");
         levelsRef.current = data.levels;
         if (qualityR.current !== "auto") applyQuality(qualityR.current);
         if (resumeTime) video.currentTime = resumeTime;
@@ -368,17 +440,14 @@ export default function VideoPlayer({
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hls.on(Hls.Events.ERROR, (_: string, d: any) => {
-        console.warn("[VP] HLS error:", d.type, d.details, "fatal:", d.fatal, "response:", d.response?.code);
         if (!d.fatal) return;
-
         if (d.type === Hls.ErrorTypes.NETWORK_ERROR) {
           if (recoveries < 3) {
             recoveries++;
-            console.warn(`[VP] retrying… (${recoveries}/3)`);
             setTimeout(() => hls.startLoad(), 1000 * recoveries);
           } else {
             clearWatchdog();
-            if (isDub) { onVersionFallback?.(); }
+            if (isDub) onVersionFallback?.();
             setError("Network error loading stream. Try another server.");
             setLoading(false);
           }
@@ -396,7 +465,7 @@ export default function VideoPlayer({
       clearWatchdog();
       offs.forEach(f => f());
       hlsRef.current?.destroy();
-      hlsRef.current  = null;
+      hlsRef.current    = null;
       levelsRef.current = [];
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -433,7 +502,6 @@ export default function VideoPlayer({
     >
       <style>{CSS}</style>
 
-      {/* video element */}
       <video
         ref={videoRef}
         className="absolute inset-0 w-full h-full object-contain z-[1]"
@@ -447,7 +515,6 @@ export default function VideoPlayer({
         )}
       </video>
 
-      {/* loading / error overlay */}
       {(loading || error) && (
         <div className="absolute inset-0 z-[10] flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="text-center px-8 max-w-sm">
@@ -474,12 +541,10 @@ export default function VideoPlayer({
         </div>
       )}
 
-      {/* controls overlay */}
       <div className={`absolute inset-0 z-[7] transition-opacity duration-300
                        ${showCtrl ? "opacity-100" : "opacity-0 pointer-events-none"}`}
            style={{ background: "linear-gradient(to top,rgba(0,0,0,.9) 0%,transparent 40%)" }}>
 
-        {/* centre */}
         <div className="absolute inset-0 flex items-center justify-center gap-6"
              onClick={e => e.stopPropagation()}>
           {showSkipButtons && (
@@ -508,11 +573,9 @@ export default function VideoPlayer({
           )}
         </div>
 
-        {/* bottom bar */}
         <div className="absolute bottom-0 inset-x-0 px-4 pb-4 pt-2"
              onClick={e => e.stopPropagation()}>
 
-          {/* progress bar */}
           <div className="relative h-[3px] hover:h-[5px] bg-white/10 rounded-full mb-3 cursor-pointer transition-all group">
             <div className="absolute inset-y-0 left-0 bg-white/20 rounded-full pointer-events-none"
                  style={{ width: `${buffered}%` }} />
@@ -525,9 +588,7 @@ export default function VideoPlayer({
                    onChange={handleSeek} className="vp-seek" />
           </div>
 
-          {/* row */}
           <div className="flex items-center justify-between gap-3">
-            {/* left */}
             <div className="flex items-center gap-1.5">
               <button onClick={togglePlay} className="p-1 rounded text-white/50 hover:text-white transition-colors cursor-pointer bg-transparent border-none">
                 {playing ? <I.pauseS /> : <I.playS />}
@@ -543,9 +604,7 @@ export default function VideoPlayer({
               </span>
             </div>
 
-            {/* right */}
             <div className="flex items-center gap-1.5">
-              {/* CC toggle */}
               <button
                 onClick={() => subtitles.length > 0 && setShowCC(c => !c)}
                 className={`p-1 rounded transition-colors cursor-pointer bg-transparent border-none
@@ -554,7 +613,6 @@ export default function VideoPlayer({
                 <I.cc />
               </button>
 
-              {/* quality picker */}
               {sorted.length > 0 && (
                 <div className="relative" ref={qMenuRef}>
                   {showQMenu && (
